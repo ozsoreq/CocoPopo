@@ -1,0 +1,5 @@
+build/
+preview-out/
+*.keystore
+*.class
+release/*.idsig
