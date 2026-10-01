@@ -111,7 +111,11 @@ func _update_popup() -> void:
 			popup.add_child(b)
 		popup.reset_size()
 	popup.visible = true
-	var sp: Vector2 = loc.world.position + Vector2(s.x, s.y + s.dyo - s.bh * s.sc - 120) * loc.world.scale.x
+	var top_y: float = s.y + s.dyo - s.bh * s.sc
+	for q in loc.things:
+		if q.link == s and q.is_char and q.state == Thing.SIT:
+			top_y = minf(top_y, q.y + q.dyo - q.bh * q.sc)
+	var sp: Vector2 = loc.world.position + Vector2(s.x, top_y - 120) * loc.world.scale.x
 	var vs := get_viewport().get_visible_rect().size
 	var w := popup.get_child_count() * 86.0
 	if sp.y < 150:
