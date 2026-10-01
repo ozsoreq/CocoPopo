@@ -83,7 +83,7 @@ func neck_y() -> float:
 func height() -> float:
 	return -neck_y() + 170.0 * b()[3]
 
-const PRESET_NAMES := ["Coco", "Popo", "Mia", "Leo", "Nana", "Dr. Pip", "Teacher", "Baker", "Zed", "Luna"]
+const PRESET_NAMES := ["Coco", "Popo", "Mia", "Leo", "Nana", "Dr. Pip", "Teacher", "Baker", "Zed", "Luna", "Kai", "Joy"]
 const PRESETS := [
 	[1, 7, 1, 1, 1, 2, 0, 0, 6, 8, 0, 0, 2, 4, 0],
 	[3, 6, 0, 5, 1, 1, 5, 1, 3, 0, 0, 1, 1, 1, 1],
@@ -95,6 +95,8 @@ const PRESETS := [
 	[2, 2, 3, 4, 1, 4, 9, 6, 4, 9, 4, 2, 0, 1, 1],
 	[7, 9, 7, 5, 3, 2, 6, 1, 7, 5, 2, 1, 0, 2, 0],
 	[1, 11, 5, 2, 4, 3, 8, 7, 10, 2, 0, 0, 0, 4, 1],
+	[4, 1, 4, 0, 1, 0, 4, 5, 2, 0, 2, 0, 1, 2, 0],  # Kai - teen surfer, sunglasses, shorts
+	[6, 8, 6, 2, 2, 1, 8, 2, 8, 2, 0, 2, 2, 7, 1],  # Joy - pigtails, party hat, skirt
 ]
 
 static func preset(i: int) -> Look:

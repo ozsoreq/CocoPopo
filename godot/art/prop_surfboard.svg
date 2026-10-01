@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="130" height="334" viewBox="-65 -319 130 334">
-<path d="M3.8 -303.25L3.8 -303.25C65.2 -231.62 65.73 -58.51 3.41 -0.34C1.49 1.45 -1.49 1.45 -3.41 -0.34L-3.41 -0.34C-65.73 -58.51 -65.2 -231.62 -3.8 -303.25C-2.85 -304.36 -1.46 -305 0 -305C1.46 -305 2.85 -304.36 3.8 -303.25L3.8 -303.25M-3.8 -296.75L0 -300L3.8 -296.75C-54.8 -228.38 -54.27 -61.49 3.41 -7.66L0 -4L-3.41 -7.66C54.27 -61.49 54.8 -228.38 -3.8 -296.75Z" fill="#2A1F2E"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="334" viewBox="-64 -319 128 334">
+<path d="M0 -300C60 -230 60 -60 0 -4C-60 -60 -60 -230 0 -300Z" fill="none" stroke="#2A1F2E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M0 -300C60 -230 60 -60 0 -4C-60 -60 -60 -230 0 -300Z" fill="#FF6F8F"/>
-<path d="M3.5 -290L3.5 -290L3.5 -14C3.5 -12.07 1.93 -10.5 0 -10.5C-1.93 -10.5 -3.5 -12.07 -3.5 -14L-3.5 -14L-3.5 -290C-3.5 -291.93 -1.93 -293.5 0 -293.5C1.93 -293.5 3.5 -291.93 3.5 -290Z" fill="#FFFFFF"/>
-<path d="M-34 -154L-34 -154L34 -154C36.21 -154 38 -152.21 38 -150C38 -147.79 36.21 -146 34 -146L34 -146L-34 -146C-36.21 -146 -38 -147.79 -38 -150C-38 -152.21 -36.21 -154 -34 -154Z" fill="#FFD43B"/>
+<path d="M0 -290L0 -14" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M-34 -150L34 -150" fill="none" stroke="#FFD43B" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

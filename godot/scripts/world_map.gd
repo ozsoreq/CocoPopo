@@ -52,7 +52,7 @@ func _ready() -> void:
 	for k in 5:
 		var piv3 := Node2D.new()
 		planet.add_child(piv3)
-		var c := Character.new(Look.preset((k * 3) % 10))
+		var c := Character.new(Look.preset((k * 3) % Look.PRESETS.size()))
 		c.sc = 0.3
 		c.y = -R + 4
 		piv3.add_child(c)

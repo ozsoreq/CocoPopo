@@ -56,6 +56,9 @@ jobs:
         run: |
           cd godot
           ../Godot_v4.7.1-stable_linux.x86_64 --headless --import --path . || true
+          # regenerate the art from the drawing scripts in tools/art (deterministic; matches the committed SVGs)
+          ../Godot_v4.7.1-stable_linux.x86_64 --headless --path . --script res://tools/art/export_art_cli.gd
+          git status --short art | head -20
           mkdir -p ../release
           ../Godot_v4.7.1-stable_linux.x86_64 --headless --verbose --path . --export-release "Android" ../release/CocoPopo.apk 2>&1 | grep -viE "^\s*$|savepack|Storing File" | tail -80
           ls -la ../release

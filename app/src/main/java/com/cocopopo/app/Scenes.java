@@ -104,11 +104,7 @@ final class Scenes {
         Gfx.ol(o);
     }
 
-    /** When exporting art for the Godot version, animated sky bits are left out (Godot animates them). */
-    static boolean exportMode = false;
-
     static void clouds(Canvas c, float W, float t, float y0, int n, int col) {
-        if (exportMode) return;
         for (int i = 0; i < n; i++) {
             float sp = 6 + hash(i) * 8;
             float x = ((hash(i + 9) * (W + 400) + t * sp) % (W + 400)) - 200;

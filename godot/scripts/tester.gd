@@ -148,12 +148,23 @@ func smoke() -> void:
 		if th.is_char and th.state == Thing.SIT:
 			sits += 1
 	check("saved and reloaded (seated kid)", sits >= 1)
-	for p in ["school", "hospital", "market", "cafe", "park", "beach", "fair"]:
+	var empty := []
+	var others := ["school", "hospital", "market", "cafe", "park", "beach", "fair"]
+	for p in others:
+		Save.data.erase(p)
+	for p in others:
 		main.go_map()
 		await frames(30)
 		main.go_place(p)
 		await frames(200)
+		var n := 0
+		for th in loc().things:
+			if th.is_char:
+				n += 1
+		if n == 0:
+			empty.append(p)
 	check("all places ran", true)
+	check("every place starts with someone " + str(empty), empty.is_empty())
 	main.go_map()
 	await frames(30)
 	var m := main.screen as WorldMap
@@ -236,7 +247,8 @@ func editor_test() -> void:
 	ed.finished.emit(ed.work, true)
 	await frames(40)
 	check("saved to My Characters", Save.data.get("lib", []).size() == 1 and main.editor == null)
-	# edit a character inside a place
+	# edit a character inside a place (fresh park: its starting character is Mia)
+	Save.data.erase("park")
 	main.go_place("park")
 	await frames(40)
 	var l := loc()
