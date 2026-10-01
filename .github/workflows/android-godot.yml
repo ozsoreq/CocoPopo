@@ -21,14 +21,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Download Godot 4.3 and export templates
+      - name: Download Godot 4.7.1 and export templates
         run: |
-          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
-          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
-          unzip -q Godot_v4.3-stable_linux.x86_64.zip
-          unzip -q Godot_v4.3-stable_export_templates.tpz
-          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
-          mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          wget -q https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_linux.x86_64.zip
+          wget -q https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_export_templates.tpz
+          unzip -q Godot_v4.7.1-stable_linux.x86_64.zip
+          unzip -q Godot_v4.7.1-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.7.1.stable
+          mv templates/* ~/.local/share/godot/export_templates/4.7.1.stable/
 
       - name: Point Godot at the Android SDK, Java and a debug keystore
         run: |
@@ -36,7 +36,7 @@ jobs:
             -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           ls "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/build-tools" "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/platform-tools" | head -20
           mkdir -p ~/.config/godot
-          cat > ~/.config/godot/editor_settings-4.3.tres <<EOT
+          cat > ~/.config/godot/editor_settings-4.7.tres <<EOT
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -46,7 +46,7 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOT
-          cat ~/.config/godot/editor_settings-4.3.tres
+          cat ~/.config/godot/editor_settings-4.7.tres
 
       - name: Import and export the APK
         env:
@@ -55,9 +55,9 @@ jobs:
           GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: cocopopo
         run: |
           cd godot
-          ../Godot_v4.3-stable_linux.x86_64 --headless --import --path . || true
+          ../Godot_v4.7.1-stable_linux.x86_64 --headless --import --path . || true
           mkdir -p ../release
-          ../Godot_v4.3-stable_linux.x86_64 --headless --verbose --path . --export-release "Android" ../release/CocoPopo.apk 2>&1 | grep -viE "^\s*$|savepack|Storing File" | tail -80
+          ../Godot_v4.7.1-stable_linux.x86_64 --headless --verbose --path . --export-release "Android" ../release/CocoPopo.apk 2>&1 | grep -viE "^\s*$|savepack|Storing File" | tail -80
           ls -la ../release
           test -s ../release/CocoPopo.apk
 
