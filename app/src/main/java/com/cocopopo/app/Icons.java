@@ -9,7 +9,7 @@ import static com.cocopopo.app.Gfx.*;
 final class Icons {
     static final int HOME = 0, CAMERA = 1, BROOM = 2, PEOPLE = 3, CUBE = 4, PLUS = 5, MINUS = 6, CHECK = 7, DICE = 8,
         CLOSE = 9, TRASH = 10, EDIT = 11, SMILE = 12, FLIP = 13, COPY = 14, BACK = 15, STAR = 16, SHIRT = 17,
-        FACE = 18, HAIR = 19, SPARK = 20, PERSON_PLUS = 21, SAVE = 22, PLAY = 23;
+        FACE = 18, HAIR = 19, SPARK = 20, PERSON_PLUS = 21, SAVE = 22, PLAY = 23, CHAIR = 24, ZZZ = 25, HAND = 26, INBOX = 27, BUBBLES = 28, SLIDEDOWN = 29, UP = 30;
 
     private static final Path p = new Path();
 
@@ -128,6 +128,38 @@ final class Icons {
                 ci(c, 22, -22, 6, col);
                 break;
             }
+            case CHAIR:
+                rr(c, -20, -32, 10, 52, 5, col);
+                rr(c, -22, -2, 44, 10, 5, col);
+                rr(c, 14, 4, 8, 26, 4, col); rr(c, -20, 4, 8, 26, 4, col);
+                break;
+            case ZZZ:
+                text(c, "z", -12, 14, 34, col, android.graphics.Paint.Align.CENTER);
+                text(c, "z", 10, -2, 26, col, android.graphics.Paint.Align.CENTER);
+                text(c, "z", 24, -16, 18, col, android.graphics.Paint.Align.CENTER);
+                break;
+            case HAND:
+                ov(c, 0, 6, 20, 22, col);
+                for (int i = 0; i < 4; i++) rr(c, -18 + i * 10, -28, 9, 26, 4, col);
+                ov(c, -22, 4, 7, 12, col);
+                break;
+            case INBOX:
+                rr(c, -26, -4, 52, 30, 6, col);
+                ln(c, 0, -32, 0, -6, 7, col);
+                poly(c, col, -12, -14, 12, -14, 0, 2);
+                break;
+            case BUBBLES:
+                cis(c, -10, 8, 16, col, 5); cis(c, 14, -10, 11, col, 5); cis(c, 16, 16, 7, col, 4);
+                break;
+            case SLIDEDOWN:
+                p.reset(); p.moveTo(-26, -22); p.quadTo(4, -18, 18, 14);
+                Gfx.pathS(c, p, col, 8);
+                poly(c, col, 26, 24, 4, 16, 22, 2);
+                break;
+            case UP:
+                ln(c, 0, 24, 0, -12, 9, col);
+                poly(c, col, -18, -6, 18, -6, 0, -28);
+                break;
             case PLAY:
                 poly(c, col, -14, -28, 30, 0, -14, 28);
                 break;

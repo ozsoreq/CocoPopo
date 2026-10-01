@@ -25,6 +25,7 @@ public final class Game {
     static final int S_POP = 0, S_DROP = 1, S_BITE = 2, S_TOGGLE = 3, S_TICK = 4, S_BOUNCE = 5, S_SPARK = 6, S_WHOOSH = 7;
 
     static final float H = 1080;
+    static boolean DEBUG = false;
     static final int MAP = 0, SCENE = 1, EDITOR = 2;
 
     // button ids
@@ -41,6 +42,7 @@ public final class Game {
     // ---- buttons registered while drawing (immediate-mode UI)
     private final int[] bid = new int[300];
     private final float[] bx = new float[300], by = new float[300], bw = new float[300], bh = new float[300];
+    private final boolean[] bround = new boolean[300];
     private int nb;
 
     // ---- input
@@ -177,7 +179,9 @@ public final class Game {
         for (Obj o : objs) {
             if (sb.length() > 0) sb.append('|');
             int li = o.link != null ? objs.indexOf(o.link) : -1;
-            sb.append(o.encode(W, (li < 0 ? 0 : o.state) + "," + li + "," + o.slot + "," + o.pstate + "," + o.bites));
+            StringBuilder ct = new StringBuilder();
+            for (String it : o.contents) { if (ct.length() > 0) ct.append('+'); ct.append(it); }
+            sb.append(o.encode(W, (li < 0 ? 0 : o.state) + "," + li + "," + o.slot + "," + o.pstate + "," + o.bites + "," + ct));
         }
         host.save("scene_" + loc, sb.length() == 0 ? "-" : sb.toString());
     }
@@ -211,6 +215,18 @@ public final class Game {
             }
             for (int i = 0; i < objs.size(); i++) { Obj o = objs.get(i); updateObj(o, dt, o == dragObj && moved); }
             updateParts(dt);
+            sortOrder();
+            shimmer -= dt;
+            if (shimmer <= 0) {
+                shimmer = 6 + rnd.nextFloat() * 4;
+                java.util.ArrayList<Obj> cands = new java.util.ArrayList<Obj>();
+                for (Obj q : objs) if (!q.isChar && q.state == Obj.FREE && (Life.states(q.prop) > 0 || Life.capacity(q.prop) > 0 || Life.seat(q.prop) != null
+                        || Life.bed(q.prop) != 0 || Life.tub(q.prop) || Life.slide(q.prop) || q.prop.equals("tree") || q.prop.equals("bush") || q.prop.equals("palm"))) cands.add(q);
+                if (!cands.isEmpty()) {
+                    Obj q = cands.get(rnd.nextInt(cands.size()));
+                    burst(q.x, q.y - q.bh * q.scale * .55f, 7, 0xFFFFF3A0, 2, 220);
+                }
+            }
         }
         if (screen == MAP) updateMap(dt);
         if (screen == EDITOR) {
@@ -241,15 +257,19 @@ public final class Game {
         if (o.blinkT > 0) o.blinkT -= dt;
         o.wiggle = Math.max(0, o.wiggle - dt * 2.5f);
         if (o.chewT > 0) o.chewT -= dt;
+        if (o.faceT > 0) o.faceT -= dt;
+        if (o.hugT > 0) o.hugT -= dt;
+        if (o.strumT > 0) o.strumT -= dt;
+        if (o.launchT > 0) { o.launchT -= dt; if (o.launchT <= 0) { o.sqv = -3; host.sound(S_DROP); } }
 
         if (dragging) {
-            o.walking = false; o.falling = false;
+            o.walking = false; o.falling = false; o.pend = null; o.nwp = 0;
             if (o.isChar) updateChar(o, dt, true);
             return;
         }
 
         // things attached to other things follow them
-        if (o.state != Obj.FREE && (o.link == null || !objs.contains(o.link))) {
+        if (o.state != Obj.FREE && (o.link == null || !objs.contains(o.link) || (o.link.isChar && o.link.state == Obj.HELD))) {
             if (o.state == Obj.HELD && o.link != null) o.link.held = null;
             o.state = Obj.FREE; o.link = null;
             startFall(o, 0, 0);
@@ -257,18 +277,45 @@ public final class Game {
         Obj l = o.link;
         switch (o.state) {
             case Obj.SIT: {
+                if (l.isChar) { // riding on shoulders
+                    o.x = l.x;
+                    o.y = l.y + l.dyo + (Avatar.neckY(l.look) - 135 * Avatar.BODY[l.look.body % 6][3]) * l.scale - Avatar.hipY(o.look) * o.scale;
+                    break;
+                }
                 float[] st = Life.seat(l.prop);
                 if (st == null || o.slot + 1 >= st.length) { o.state = Obj.FREE; break; }
                 float dir = l.flip ? -1 : 1;
                 o.x = l.x + st[1 + o.slot] * l.scale * dir;
                 if (l.prop.equals("swing")) o.x += (float) Math.sin((t + l.phase) * 2) * 10 * l.scale;
-                o.y = l.y + st[0] * l.scale + 98 * o.scale - 4 - l.hop;
+                o.y = l.y + st[0] * l.scale - Avatar.hipY(o.look) * o.scale - 4 - l.hop - l.lift * 36 * l.scale;
                 break;
             }
             case Obj.LIE:
                 o.x = l.x + 158 * l.scale * o.slot;
                 o.y = l.y + (Life.bed(l.prop) + 34) * l.scale - l.hop;
                 break;
+            case Obj.BATHE:
+                o.x = l.x - 30 * l.scale * (l.flip ? -1 : 1);
+                o.y = l.y - 74 * l.scale - Avatar.hipY(o.look) * o.scale - l.hop;
+                if (rnd.nextFloat() < dt * 3) burst(o.x + (rnd.nextFloat() - .5f) * 200 * l.scale, l.y - 130 * l.scale, 1, 0xFFFFFFFF, 3, 120);
+                break;
+            case Obj.SLIDE: {
+                o.slideT += dt / 1.1f;
+                float u = Math.min(1, o.slideT), dir = l.flip ? -1 : 1;
+                float px0 = -70, py0 = -290, cx0 = 60, cy0 = -190, px1 = 150, py1 = -20;
+                float bx = (1 - u) * (1 - u) * px0 + 2 * (1 - u) * u * cx0 + u * u * px1;
+                float by = (1 - u) * (1 - u) * py0 + 2 * (1 - u) * u * cy0 + u * u * py1;
+                o.x = l.x + bx * l.scale * dir;
+                o.y = l.y + by * l.scale - Avatar.hipY(o.look) * o.scale * .6f;
+                o.flip = l.flip;
+                if (u >= 1) {
+                    o.state = Obj.FREE; o.link = null;
+                    o.x = l.x + 200 * l.scale * dir; o.y = l.y;
+                    o.sqv = -3; o.setFace(Avatar.F_LAUGH, 1.5f); o.emote = 6; o.emoteT = 0;
+                    host.sound(S_DROP);
+                }
+                break;
+            }
             case Obj.ON_TOP:
                 o.x = l.x + o.offX * l.scale;
                 o.y = l.y + Life.surface(l.prop) * l.scale - l.lift * 36 * l.scale - l.hop;
@@ -277,11 +324,24 @@ public final class Game {
                 Pose hp = l.pose;
                 float dir = l.flip ? -1 : 1;
                 float hs = holdScale(o);
-                o.x = l.x + Avatar.handX(hp) * l.scale * dir;
-                o.y = l.y + l.dyo + Avatar.handY(hp) * l.scale + o.bh * hs * .45f;
+                o.x = l.x + Avatar.handX(hp, l.look) * l.scale * dir;
+                o.y = l.y + l.dyo + Avatar.handY(hp, l.look) * l.scale + o.bh * hs * (hp.holdType == 2 ? .1f : .45f);
                 break;
             }
             default: break;
+        }
+
+        // vehicles drive to where they were sent
+        if (!o.isChar && o.walking) {
+            float dx = o.tx - o.x, dy = o.ty - o.y;
+            float d = (float) Math.sqrt(dx * dx + dy * dy);
+            if (d < 6) o.walking = false;
+            else {
+                float step = Math.min(d, 420 * dt);
+                o.x += dx / d * step; o.y += dy / d * step;
+                if (Math.abs(dx) > 4) o.flip = o.prop.equals("car") ? dx < 0 : dx > 0;
+                o.hop = Math.abs((float) Math.sin(t * 18)) * 3;
+            }
         }
 
         if (o.falling) {
@@ -300,6 +360,7 @@ public final class Game {
                     o.peakY = o.y;
                     host.sound(S_BOUNCE);
                 } else {
+                    if (o.isChar && o.vy > 1900) { o.setFace(Avatar.F_WOW, 1.2f); o.emote = 1; o.emoteT = 0; }
                     o.falling = false; o.vy = 0; o.fvx = 0;
                     o.sqv = -2.6f;
                     if (restLink != null) { o.state = Obj.ON_TOP; o.link = restLink; o.offX = (o.x - restLink.x) / restLink.scale; }
@@ -311,6 +372,7 @@ public final class Game {
     }
 
     private Obj restLink;
+    private float shimmer = 3;
 
     /** Resting height for a falling object: a table top (small items) or the floor. */
     private float restFor(Obj o) {
@@ -341,25 +403,69 @@ public final class Game {
         Pose p = o.pose;
         p.t = t + o.phase;
         float em = o.emoteT >= 0 && o.emoteT < .8f ? 1 : 0;
-        p.arm = Math.max(Math.max(o.lift, em), o.falling ? 1 : 0);
+        p.arm = Math.max(Math.max(o.lift, em), o.falling || o.state == Obj.SLIDE ? 1 : 0);
+        if (o.walking && o.nwp >= 0 && Math.abs(o.ty - o.y) > Math.abs(o.tx - o.x) * 2) p.arm = Math.max(p.arm, .7f); // climbing
         p.swing = Math.max(o.lift, o.falling ? .6f : 0) * (float) Math.sin(t * 16 + o.phase) * .8f;
         p.blink = o.blinkT > 0 ? (float) Math.sin(Math.PI * (1 - o.blinkT / .14f)) : 0;
-        p.mood = o.emoteT >= 0 ? new int[]{1, 5, 0, 3, 2, 2, 1}[o.emote % 7] : (o.falling || dragging ? 3 : -1);
-        p.sit = o.state == Obj.SIT;
+        p.mood = -1;
+        p.sit = o.state == Obj.SIT || o.state == Obj.BATHE || o.state == Obj.SLIDE;
         p.sleep = o.state == Obj.LIE;
+        p.noLegs = o.state == Obj.BATHE;
         p.hold = o.held != null;
+        p.holdType = o.held != null ? Life.holdType(o.held.prop) : 0;
         p.chew = o.chewT > 0;
+        p.strum += ((o.strumT > 0 ? 1 : 0) - p.strum) * Math.min(1, dt * 10);
+        p.hug += ((o.hugT > 0 ? 1 : 0) - p.hug) * Math.min(1, dt * 8);
         if (o.actT > 0) { o.actT -= dt; if (o.actT <= 0) o.act = 0; }
         float k = Math.min(1, dt * 8);
         p.wave += ((o.act == 1 ? 1 : 0) - p.wave) * k;
         p.look += ((o.act == 2 ? (float) Math.sin(t * 2.4f + o.phase) : 0) - p.look) * k;
         p.dance += ((o.act == 3 ? 1 : 0) - p.dance) * k;
 
+        // expression
+        int face = Avatar.F_NONE;
+        if (o.faceT > 0) face = o.faceId;
+        else if (dragging) face = (t + o.phase) % 1.4f < .7f ? Avatar.F_LAUGH : Avatar.F_WOW;
+        else if (o.falling) face = Avatar.F_SCARED;
+        else if (o.hugT > 0) face = Avatar.F_LOVE;
+        else if (o.chewT > 0) face = Avatar.F_YUM;
+        else if (o.state == Obj.BATHE) face = Avatar.F_HAPPY;
+        else if (o.emoteT >= 0) face = new int[]{Avatar.F_LOVE, Avatar.F_WOW, Avatar.F_HAPPY, Avatar.F_WOW, Avatar.F_NONE, Avatar.F_SLEEPY, Avatar.F_LAUGH}[o.emote % 7];
+        else if (o.strumT > 0) face = Avatar.F_LAUGH;
+
+        // gaze: what is this character looking at?
+        float gx = 0, gy = 0;
+        Obj tv = watching(o);
+        if (o.held != null) { gx = (o.flip ? -1 : 1) * .7f; gy = .6f; }
+        else if (tv != null) {
+            gx = tv.x < o.x ? -1 : 1; gy = -.2f;
+            if (tv.pstate == 2 && face == Avatar.F_NONE && ((int) (t + o.phase) % 5) == 0) face = Avatar.F_LAUGH;
+            if (o.state == Obj.SIT && face == Avatar.F_NONE) face = Avatar.F_HAPPY;
+        } else if (o.walking) gx = o.tx < o.x ? -.8f : .8f;
+        else {
+            o.glanceT -= dt;
+            if (o.glanceT <= 0) { o.glance = (rnd.nextFloat() - .5f) * 1.6f; o.glanceT = 1 + rnd.nextFloat() * 3; }
+            gx = o.glance;
+        }
+        p.gazeX += (gx - p.gazeX) * Math.min(1, dt * 6);
+        p.gazeY += (gy - p.gazeY) * Math.min(1, dt * 6);
+        if (tv != null && o.act == 0) p.look += ((tv.x < o.x ? -.45f : .45f) - p.look) * k;
+        p.face = face;
+
         if (o.walking && o.state == Obj.FREE && !dragging) {
             float dx = o.tx - o.x, dy = o.ty - o.y;
             float d = (float) Math.sqrt(dx * dx + dy * dy);
-            if (d < 6) o.walking = false;
-            else {
+            if (d < 6) {
+                o.x = o.tx; o.y = o.ty;
+                if (o.nwp > 0) {
+                    o.tx = o.wpx[0]; o.ty = o.wpy[0];
+                    for (int i = 1; i < o.nwp; i++) { o.wpx[i - 1] = o.wpx[i]; o.wpy[i - 1] = o.wpy[i]; }
+                    o.nwp--;
+                } else {
+                    o.walking = false;
+                    if (o.pend != null) { Obj tg = o.pend; o.pend = null; arrive(o, tg); }
+                }
+            } else {
                 float step = Math.min(d, 270 * o.scale * dt);
                 o.x += dx / d * step; o.y += dy / d * step;
                 if (Math.abs(dx) > 4) o.flip = dx < 0;
@@ -373,33 +479,100 @@ public final class Game {
 
         if (!dragging && !o.falling && o != dragObj) {
             o.idleT -= dt;
-            if (o.idleT <= 0) { o.idleT = 4 + rnd.nextFloat() * 8; pickIdle(o); }
+            if (o.idleT <= 0) { o.idleT = 4 + rnd.nextFloat() * 7; if (!o.walking) pickIdle(o); }
             if (o.state == Obj.LIE && o.emoteT < 0 && rnd.nextFloat() < dt * .3f) { o.emote = 5; o.emoteT = 0; }
         }
     }
 
+    /** A TV that is on and close enough for this character to watch, or null. */
+    private Obj watching(Obj o) {
+        if (o.state != Obj.FREE && o.state != Obj.SIT) return null;
+        Obj best = null; float bd = 900;
+        for (Obj q : objs) {
+            if (q.isChar || !q.prop.equals("tv") || q.pstate == 1) continue;
+            float d = Math.abs(q.x - o.x) + Math.abs(q.y - o.y) * 2;
+            if (d < bd && Math.abs(q.x - o.x) > 60) { bd = d; best = q; }
+        }
+        return best;
+    }
+
     /** Characters do little things on their own so the world feels alive. */
     private void pickIdle(Obj o) {
-        int r = rnd.nextInt(10);
-        if (o.state == Obj.LIE) return;
-        if (o.state == Obj.SIT) {
-            if (r < 4) { o.act = 2; o.actT = 2.5f; }
-            else if (r < 7) { o.act = 1; o.actT = 1.8f; }
-            else { o.emote = rnd.nextInt(7); o.emoteT = 0; }
-            return;
+        int r = rnd.nextInt(20);
+        switch (o.state) {
+            case Obj.LIE:
+                if (r < 2) standUp(o, Avatar.F_HAPPY);
+                return;
+            case Obj.BATHE:
+                if (r < 6) { standUp(o, Avatar.F_HAPPY); burst(o.x, o.y - 200 * o.scale, 10, 0xFFFFE066, 2, 400); host.sound(S_SPARK); }
+                else { o.emote = 6; o.emoteT = 0; }
+                return;
+            case Obj.SIT:
+                if (o.link != null && o.link.isChar) { if (r < 6) { o.emote = 6; o.emoteT = 0; } return; }
+                if (r < 3) { standUp(o, Avatar.F_NONE); return; }
+                if (o.held != null && Life.food(o.held.prop) && r < 9) { eat(o); return; }
+                if (r < 10) { o.act = 2; o.actT = 2.5f; }
+                else if (r < 15) { o.act = 1; o.actT = 1.8f; }
+                else { o.emote = rnd.nextInt(7); o.emoteT = 0; }
+                return;
+            case Obj.FREE: break;
+            default: return;
         }
-        if (o.state != Obj.FREE) return;
-        if (r < 4) {
+        if (o.held != null && Life.food(o.held.prop) && r < 8) { eat(o); return; }
+        if (o.held != null && !Life.food(o.held.prop) && r < 3) { putDown(o); return; }
+        if (r < 7 && autoUse(o)) return;
+        if (r < 12) {
             float[] f = Life.floors(loc);
             int b = Life.band(loc, o.y);
             float dist = (120 + rnd.nextFloat() * 260) * o.scale * (rnd.nextBoolean() ? 1 : -1);
             o.tx = Gfx.clamp(o.x + dist, 70, W - 70);
             o.ty = Gfx.clamp(o.y + (rnd.nextFloat() - .5f) * 80, f[b] + 10, f[b + 1] - 6);
-            o.walking = true;
-        } else if (r < 6) { o.act = 1; o.actT = 1.8f; }
-        else if (r < 8) { o.act = 2; o.actT = 2.6f; }
-        else if (r < 9) { o.act = 3; o.actT = 2.6f; }
+            o.walking = true; o.nwp = 0;
+        } else if (r < 14) { o.act = 1; o.actT = 1.8f; }
+        else if (r < 16) { o.act = 2; o.actT = 2.6f; }
+        else if (r < 18) { o.act = 3; o.actT = 2.6f; }
         else { o.hopV = 560; o.emote = rnd.nextInt(7); o.emoteT = 0; }
+    }
+
+    /** Pick something nearby to use on its own: a free seat, a toy or snack, the tub. */
+    private boolean autoUse(Obj o) {
+        int band = Life.band(loc, o.y);
+        Obj best = null; float bestScore = 0;
+        for (Obj q : objs) {
+            if (q == o || q.isChar || q.state == Obj.HELD) continue;
+            float d = Math.abs(q.x - o.x);
+            if (d > 750 || Life.band(loc, q.y) != band) continue;
+            float score = 0;
+            if (Life.seat(q.prop) != null && freeSlot(q, o) >= 0) score = 2;
+            else if (o.held == null && Life.holdable(q) && !Life.floats(q.prop)) score = Life.food(q.prop) ? 3 : 1.5f;
+            else if (Life.tub(q.prop) && occupant(q) == null) score = 1;
+            else if (Life.slide(q.prop)) score = 1.2f;
+            if (score <= 0) continue;
+            score *= .5f + rnd.nextFloat();
+            if (score > bestScore) { bestScore = score; best = q; }
+        }
+        if (best == null) return false;
+        return walkUse(o, best);
+    }
+
+    private void standUp(Obj o, int face) {
+        Obj l = o.link;
+        o.state = Obj.FREE; o.link = null;
+        if (l != null) {
+            o.x = Gfx.clamp(l.x + (rnd.nextBoolean() ? 1 : -1) * l.bw * l.scale * .4f, 60, W - 60);
+            o.y = Life.floorBelow(loc, l.y - 4);
+            if (l.isChar) o.y = l.y + 10;
+        }
+        o.hopV = 420;
+        if (face != Avatar.F_NONE) o.setFace(face, 1.2f);
+    }
+
+    private void putDown(Obj o) {
+        Obj it = o.held;
+        if (it == null) return;
+        o.held = null; it.state = Obj.FREE; it.link = null;
+        it.x = o.x + (o.flip ? -1 : 1) * 90 * o.scale;
+        startFall(it, 0, 0);
     }
 
     // ------------------------------------------------------------------ particles
@@ -413,8 +586,8 @@ public final class Game {
             float sp = speed * (.4f + rnd.nextFloat() * .6f);
             px[parts] = x; py[parts] = y;
             pvx[parts] = (float) Math.cos(a) * sp; pvy[parts] = (float) Math.sin(a) * sp - speed * .6f;
-            plife[parts] = type == 1 ? .7f : .8f + rnd.nextFloat() * .5f;
-            psz[parts] = type == 1 ? 30 : 6 + rnd.nextFloat() * 8;
+            plife[parts] = type == 1 ? .7f : (type == 3 ? 1.6f + rnd.nextFloat() : .8f + rnd.nextFloat() * .5f);
+            psz[parts] = type == 1 ? 30 : (type == 3 ? 8 + rnd.nextFloat() * 14 : 6 + rnd.nextFloat() * 8);
             pcol[parts] = col; ptype[parts] = type;
         }
     }
@@ -431,6 +604,7 @@ public final class Game {
             }
             if (ptype[i] == 0) pvy[i] += 1800 * dt;
             if (ptype[i] == 2) { pvy[i] -= 200 * dt; pvx[i] *= .96f; }
+            if (ptype[i] == 3) { pvy[i] = pvy[i] * .9f - 80 * dt; pvx[i] = pvx[i] * .9f + (float) Math.sin(t * 6 + i) * 4; }
             px[i] += pvx[i] * dt; py[i] += pvy[i] * dt;
         }
     }
@@ -445,6 +619,10 @@ public final class Game {
                 c.save(); c.translate(px[i], py[i]); c.rotate(t * 200 + i * 40);
                 poly(c, al(pcol[i], a), 0, -psz[i] * 1.6f, psz[i] * .5f, 0, 0, psz[i] * 1.6f, -psz[i] * .5f, 0);
                 c.restore();
+            } else if (ptype[i] == 3) {
+                ci(c, px[i], py[i], psz[i], al(0xFFFFFFFF, a / 3));
+                cis(c, px[i], py[i], psz[i], al(0xFFFFFFFF, a), 3);
+                ci(c, px[i] - psz[i] * .35f, py[i] - psz[i] * .35f, psz[i] * .22f, al(0xFFFFFFFF, a));
             } else ci(c, px[i], py[i], psz[i] * .5f, al(pcol[i], a));
         }
     }
@@ -503,16 +681,19 @@ public final class Game {
         arc(c, cx, cy, r * s * .8f, r * s * .8f, 200, 70, r * .08f, al(0xFFFFFFFF, 120));
         Icons.draw(c, icon, cx, cy, r / 50f * s, 0xFFFFFFFF);
         reg(id, cx, cy, r * 2, r * 2);
+        bround[nb - 1] = true;
     }
 
     private void reg(int id, float cx, float cy, float w, float h) {
         if (nb >= bid.length) return;
-        bid[nb] = id; bx[nb] = cx; by[nb] = cy; bw[nb] = w; bh[nb] = h; nb++;
+        bid[nb] = id; bx[nb] = cx; by[nb] = cy; bw[nb] = w; bh[nb] = h; bround[nb] = false; nb++;
     }
 
     private int hitBtn(float x, float y) {
-        for (int i = nb - 1; i >= 0; i--)
-            if (Math.abs(x - bx[i]) <= bw[i] / 2 && Math.abs(y - by[i]) <= bh[i] / 2) return bid[i];
+        for (int i = nb - 1; i >= 0; i--) {
+            float dx = x - bx[i], dy = y - by[i], r = bw[i] / 2 + 6;
+            if (bround[i] ? dx * dx + dy * dy <= r * r : Math.abs(dx) <= bw[i] / 2 && Math.abs(dy) <= bh[i] / 2) return bid[i];
+        }
         return -1;
     }
 
@@ -697,12 +878,10 @@ public final class Game {
     // ================================================================== SCENE
     private void drawScene(boolean ui) {
         Scenes.drawBg(c, loc, W, H, t);
-        order.clear();
-        order.addAll(objs);
-        Collections.sort(order, byDepth);
-        if (dragObj != null && order.remove(dragObj)) order.add(dragObj);
+        sortOrder();
         for (Obj o : order) drawObj(o);
         drawParts();
+        drawBadge();
         if (!ui) return;
 
         if (sel != null && objs.contains(sel) && !(down && mode == M_DRAG && moved)) drawPopup();
@@ -712,6 +891,18 @@ public final class Game {
         btn(B_CAM, W - 100, 92, 52, 0xFF4FB3FF, Icons.CAMERA);
         btn(B_CLEAR, W - 226, 92, 52, 0xFFFFB02E, Icons.BROOM);
         drawTray();
+    }
+
+    private void sortOrder() {
+        order.clear();
+        order.addAll(objs);
+        Collections.sort(order, byDepth);
+        if (dragObj != null && order.remove(dragObj)) order.add(dragObj);
+        // things riding/held by the dragged object stay on top with it
+        for (int i = 0; i < objs.size(); i++) {
+            Obj q = objs.get(i);
+            if (dragObj != null && q.link == dragObj && order.remove(q)) order.add(q);
+        }
     }
 
     private void drawObj(Obj o) {
@@ -727,6 +918,27 @@ public final class Game {
         Gfx.shade = true;
         float yoff = -o.lift * 36 * o.scale - o.hop;
         if (o.prop != null && o.prop.equals("balloon")) yoff -= 8 + (float) Math.sin(t * 1.6f + o.phase) * 8;
+        if (o.launchT > 0) {
+            float u = 3 - o.launchT;
+            yoff -= u < 1.5f ? u * u * 900 : (3 - u) * (3 - u) * 900;
+            if (rnd.nextFloat() < .6f) burst(o.x, o.y + yoff, 1, 0xFFFFB93D, 0, 200);
+        }
+        boolean glow = o == tgObj && dragObj != null && moved;
+        if (glow) {
+            int keep = Gfx.olc;
+            Gfx.olc = al(0xFFFFFFFF, 220);
+            float gw = 13 + (float) Math.sin(t * 10) * 4;
+            c.save();
+            c.translate(o.x, o.y + yoff);
+            c.scale(o.scale * (o.flip && o.state != Obj.LIE ? -1 : 1), o.scale);
+            Gfx.ol(gw / o.scale);
+            boolean sh = Gfx.shade; Gfx.shade = false;
+            if (o.isChar && o.state != Obj.LIE) Avatar.draw(c, o.look, o.pose); else if (!o.isChar) PropArt.draw(c, o.prop, t + o.phase, o.pstate);
+            Gfx.shade = sh;
+            c.restore();
+            Gfx.olc = keep;
+            Gfx.ol(o.isChar ? 6.5f : 5f);
+        }
         c.save();
         c.translate(o.x, o.y + yoff);
         c.rotate(o.tilt + (float) Math.sin(t * 30) * 6 * o.wiggle);
@@ -749,6 +961,17 @@ public final class Game {
             PropArt.blanket(c, b.prop);
             c.restore();
         }
+        if ((o.state == Obj.BATHE || (o.state == Obj.SIT && o.link != null && !o.link.isChar && Life.coversSitter(o.link.prop))) && o.link != null) {
+            Obj b = o.link;
+            c.save();
+            c.translate(b.x, b.y - b.hop - b.lift * 36 * b.scale);
+            c.scale(b.scale * (b.flip ? -1 : 1), b.scale);
+            Gfx.ol(5);
+            PropArt.front(c, b.prop, t);
+            c.restore();
+            if (Life.tub(b.prop) && !b.contents.isEmpty()) drawContents(b, -b.hop);
+        }
+        if (!o.isChar && !o.contents.isEmpty()) drawContents(o, yoff);
         if (o.isChar && o.held != null) drawHeld(o, o.held);
         Gfx.ol(0);
         Gfx.shade = false;
@@ -759,6 +982,66 @@ public final class Game {
             float headX = o.state == Obj.LIE ? o.x - 211 * o.scale * o.slot : o.x;
             Icons.emote(c, o.emote, headX, headY - 50 - (float) Math.sin(t * 5) * 4, o.scale * .9f * a * fo, t);
         }
+    }
+
+    /** Peek at what is inside a container. */
+    private void drawContents(Obj o, float yoff) {
+        if (o.prop.equals("fridge") && o.pstate == 0) return;
+        if (o.prop.equals("gift") && o.pstate == 0) return;
+        int n = Math.min(3, o.contents.size());
+        float base;
+        switch (o.prop) {
+            case "cart": base = -96; break;
+            case "crate": base = -70; break;
+            case "backpack": base = -130; break;
+            case "tub": base = -126; break;
+            case "gift": base = -80; break;
+            case "fridge": base = -250; break;
+            case "shelf": base = -262; break;
+            default: base = -o.bh * .6f;
+        }
+        Gfx.ol(4);
+        for (int i = 0; i < n; i++) {
+            String id = o.contents.get(o.contents.size() - 1 - i);
+            PropArt.Def d = PropArt.get(id);
+            float k = Math.min(.5f, 70 / Math.max(d.w, d.h)) * o.scale;
+            float bob = o.prop.equals("tub") ? (float) Math.sin(t * 3 + i) * 5 : 0;
+            c.save();
+            float off = o.prop.equals("tub") ? 110 : 0;
+            c.translate(o.x + ((i - (n - 1) / 2f) * 46 + off) * o.scale * (o.flip ? -1 : 1), o.y + yoff + base * o.scale + bob);
+            c.scale(k, k);
+            PropArt.draw(c, id, t, 0);
+            c.restore();
+        }
+        Gfx.ol(5);
+    }
+
+    private void drawBadge() {
+        if (tgObj == null || dragObj == null || !moved) return;
+        Obj o = tgObj;
+        int icon; int col;
+        switch (tgKind) {
+            case K_SIT: icon = Icons.CHAIR; col = 0xFF4FB3FF; break;
+            case K_LIE: icon = Icons.ZZZ; col = 0xFF8E7BFF; break;
+            case K_GIVE: icon = Icons.HAND; col = 0xFFFF9A3D; break;
+            case K_IN: icon = Icons.INBOX; col = 0xFF58B368; break;
+            case K_BATHE: icon = Icons.BUBBLES; col = 0xFF3CC5DF; break;
+            case K_SLIDE: icon = Icons.SLIDEDOWN; col = 0xFFFF6F8F; break;
+            case K_HUG: icon = Icons.SAVE; col = 0xFFFF5C8A; break;
+            case K_SHOULDER: icon = Icons.UP; col = 0xFFFFB02E; break;
+            case K_BOUNCE: icon = Icons.UP; col = 0xFFB67CFF; break;
+            default: return;
+        }
+        float bx = o.x + o.bw * o.scale * .5f + 20, by = o.y + o.dyo - o.bh * o.scale - 10;
+        if (Math.abs(bx - dragObj.x) < 120) bx = o.x - o.bw * o.scale * .5f - 20;
+        bx = Gfx.clamp(bx, 60, W - 60);
+        if (by < 70) by = 70;
+        float s = 1 + (float) Math.sin(t * 8) * .08f;
+        ci(c, bx, by + 6, 46 * s, 0xFF2A1F2E);
+        Gfx.ol(4.5f);
+        ci(c, bx, by, 46 * s, 0xFFFFFFFF);
+        Gfx.ol(0);
+        Icons.draw(c, icon, bx, by, .82f * s, col);
     }
 
     private void drawHeld(Obj holder, Obj it) {
@@ -773,9 +1056,16 @@ public final class Game {
         c.restore();
         // fingers wrap around the item
         float dir = holder.flip ? -1 : 1;
-        float hx = holder.x + Avatar.handX(holder.pose) * holder.scale * dir, hy = holder.y + holder.dyo + Avatar.handY(holder.pose) * holder.scale;
+        int skin = Look.SKIN[holder.look.skin];
         Gfx.ol(6.5f * holder.scale);
-        ci(c, hx, hy, 17 * holder.scale, Look.SKIN[holder.look.skin]);
+        if (holder.pose.holdType == 1 && holder.pose.arm < .5f) {
+            float hy = holder.y + holder.dyo + Avatar.handY(holder.pose, holder.look) * holder.scale;
+            for (int sd = -1; sd <= 1; sd += 2) ov(c, holder.x + sd * 30 * holder.scale, hy + 10 * holder.scale, 17 * holder.scale, 19 * holder.scale, skin);
+        } else {
+            float hx = holder.x + Avatar.handX(holder.pose, holder.look) * holder.scale * dir;
+            float hy = holder.y + holder.dyo + Avatar.handY(holder.pose, holder.look) * holder.scale;
+            ov(c, hx, hy, 17 * holder.scale, 19 * holder.scale, skin);
+        }
         Gfx.ol(6.5f);
     }
 
@@ -990,6 +1280,10 @@ public final class Game {
                 dragObj.vx = x - lx > 0 ? (x - lx) * 60 : (x - lx) * 60;
                 dragObj.x = Gfx.clamp(x + dragDX, 30, W - 30);
                 dragObj.y = Gfx.clamp(y + dragDY, 150, H - 6);
+                fingerX = x; fingerY = y;
+                Obj before = tgObj;
+                resolve(dragObj, x, y);
+                if (tgObj != null && tgObj != before) { host.haptic(); host.sound(S_TICK); }
                 if (dragObj.held != null) dragObj.dyo = -dragObj.lift * 36 * dragObj.scale;
             }
         } else if (mode == M_TRAY) {
@@ -999,6 +1293,7 @@ public final class Game {
                     Obj o = spawnCard(trayCard, x, y);
                     if (o != null) {
                         host.sound(S_POP);
+                        fingerX = x; fingerY = y;
                         mode = M_DRAG; dragObj = o; moved = true;
                         dragDX = 0; dragDY = 0; o.lift = 1;
                         return;
@@ -1032,9 +1327,15 @@ public final class Game {
             if (mode == M_DRAG && dragObj != null) {
                 Obj o = dragObj;
                 dragObj = null;
-                sel = o;
-                if (!moved) tapObj(o);
-                else drop(o);
+                Obj prev = sel;
+                if (!moved) {
+                    if (!o.isChar && prev != null && prev.isChar && prev != o && prev.state != Obj.HELD
+                            && o.state != Obj.HELD && objs.contains(prev) && walkUse(prev, o)) {
+                        sel = prev;
+                        burst(o.x, o.y - o.bh * o.scale * .5f, 6, 0xFFFFE066, 2, 260);
+                        host.sound(S_TICK);
+                    } else { sel = o; tapObj(o); }
+                } else { sel = o; drop(o); }
             } else if (mode == M_TRAY) {
                 if (!trayDecided && trayCard >= 0 && cardAt(x, y) == trayCard) {
                     if (trayTab == 1 && trayCard == 0) go(EDITOR, null, 1, null);
@@ -1058,19 +1359,120 @@ public final class Game {
     }
 
     // ------------------------------------------------------------------ interactions
+    static final int K_NONE = 0, K_SIT = 1, K_LIE = 2, K_GIVE = 3, K_IN = 4, K_BATHE = 5, K_SLIDE = 6, K_HUG = 7,
+        K_SHOULDER = 8, K_BOUNCE = 9, K_PICK = 10, K_USE = 11;
+
+    // current drop target while dragging (also drives the glow + badge)
+    private Obj tgObj;
+    private int tgKind, tgSlot;
+    private float tgScore;
+    private float fingerX, fingerY, feetX = -1e9f, feetY;
+
+    private void consider(Obj obj, int kind, int slot, float cx, float cy, float rx, float ry, float px, float py, float bx, float by) {
+        float d1 = ((px - cx) / rx) * ((px - cx) / rx) + ((py - cy) / ry) * ((py - cy) / ry);
+        float d2 = ((bx - cx) / rx) * ((bx - cx) / rx) + ((by - cy) / ry) * ((by - cy) / ry);
+        float d = Math.min(d1, d2);
+        if (feetX > -1e8f) d = Math.min(d, ((feetX - cx) / rx) * ((feetX - cx) / rx) + ((feetY - cy) / ry) * ((feetY - cy) / ry));
+        if (d <= 1 && d < tgScore) { tgScore = d; tgObj = obj; tgKind = kind; tgSlot = slot; }
+    }
+
+    /** Finds what the dragged thing would interact with if released now (forgiving, finger- and body-based). */
+    private void resolve(Obj d, float fx, float fy) {
+        tgObj = null; tgKind = K_NONE; tgScore = 1.0001f;
+        if (d == null) return;
+        feetX = -1e9f;
+        if (d.isChar) {
+            float bx = d.x, by = d.y - (d.bh - 60) * d.scale * .5f;
+            feetX = d.x; feetY = d.y;
+            for (Obj q : objs) {
+                if (q == d) continue;
+                float qs = Math.max(q.scale, .85f);
+                if (q.isChar) {
+                    if (q.state == Obj.HELD || q.state == Obj.LIE || q.state == Obj.BATHE || q.state == Obj.SLIDE) continue;
+                    if (q.link == d) continue;
+                    float headY = q.y + q.dyo + (Avatar.neckY(q.look) - 90) * q.scale;
+                    float fk = feetX; feetX = -1e9f;
+                    if (!hasRider(q)) consider(q, K_SHOULDER, 0, q.x, headY, 95 * qs, 80 * qs, fx, fy, bx, by - 60 * d.scale);
+                    if (q.state == Obj.FREE) consider(q, K_HUG, 0, q.x, q.y - q.bh * q.scale * .4f, 120 * qs, 130 * qs, fx, fy, bx, by);
+                    feetX = fk;
+                    continue;
+                }
+                float[] st = Life.seat(q.prop);
+                if (st != null) {
+                    for (int j = 0; j + 1 < st.length; j++) {
+                        if (seatTaken(q, j)) continue;
+                        float sx = q.x + st[1 + j] * q.scale * (q.flip ? -1 : 1);
+                        consider(q, K_SIT, j, sx, q.y + (st[0] - 40) * q.scale, 120 * qs, 130 * qs, fx, fy, bx, by);
+                    }
+                }
+                float m = Life.bed(q.prop);
+                if (m != 0 && occupant(q) == null)
+                    consider(q, K_LIE, 0, q.x, q.y + (m - 30) * q.scale, q.bw * q.scale * .6f, 150 * qs, fx, fy, bx, by);
+                if (Life.tub(q.prop) && occupant(q) == null)
+                    consider(q, K_BATHE, 0, q.x, q.y - 110 * q.scale, q.bw * q.scale * .55f, 140 * qs, fx, fy, bx, by);
+                if (Life.slide(q.prop))
+                    consider(q, K_SLIDE, 0, q.x - 100 * q.scale * (q.flip ? -1 : 1), q.y - 300 * q.scale, 140 * qs, 140 * qs, fx, fy, bx, by);
+                if (Life.bouncy(q.prop) && q.state == Obj.FREE)
+                    consider(q, K_BOUNCE, 0, q.x, q.y - 80 * q.scale, 110 * qs, 110 * qs, fx, fy, bx, by + d.bh * d.scale * .4f);
+            }
+            feetX = -1e9f;
+        } else {
+            float bx = d.x, by = d.y - d.bh * d.scale * .5f;
+            for (Obj q : objs) {
+                if (q == d) continue;
+                float qs = Math.max(q.scale, .85f);
+                if (q.isChar) {
+                    if (q.held == null && Life.holdable(d) && q.state != Obj.LIE && q.state != Obj.HELD && q.state != Obj.SLIDE)
+                        consider(q, K_GIVE, 0, q.x, q.y + q.dyo - q.bh * q.scale * .45f, 130 * qs, q.bh * q.scale * .5f, fx, fy, bx, by);
+                    continue;
+                }
+                int cap = Life.capacity(q.prop);
+                if (cap > 0 && q.contents.size() < cap && Life.holdable(d) && Life.capacity(d.prop) == 0
+                        && !(q.prop.equals("gift") && q.pstate == 0)) {
+                    float zy = Life.tub(q.prop) ? q.y - 120 * q.scale : q.y - q.bh * q.scale * .55f;
+                    consider(q, K_IN, 0, q.x, zy, q.bw * q.scale * .5f, Math.max(90, q.bh * q.scale * .5f), fx, fy, bx, by);
+                }
+            }
+        }
+    }
+
+    private boolean hasRider(Obj c2) {
+        for (Obj q : objs) if (q.isChar && q.link == c2 && q.state == Obj.SIT) return true;
+        return false;
+    }
+
+    private Obj occupant(Obj prop) {
+        for (Obj q : objs) if (q.isChar && q.link == prop && (q.state == Obj.LIE || q.state == Obj.BATHE)) return q;
+        return null;
+    }
+
+    private int freeSlot(Obj seat, Obj who) {
+        float[] st = Life.seat(seat.prop);
+        if (st == null) return -1;
+        int best = -1; float bd = 1e9f;
+        for (int j = 0; j + 1 < st.length; j++) {
+            if (seatTaken(seat, j)) continue;
+            float d = Math.abs(seat.x + st[1 + j] * seat.scale * (seat.flip ? -1 : 1) - who.x);
+            if (d < bd) { bd = d; best = j; }
+        }
+        return best;
+    }
+
     private void pickUp(Obj o) {
         host.sound(S_POP);
-        o.walking = false; o.falling = false; o.act = 0;
+        o.walking = false; o.falling = false; o.act = 0; o.pend = null; o.nwp = 0;
         if (o.state == Obj.HELD && o.link != null) o.link.held = null;
         o.state = Obj.FREE; o.link = null;
     }
 
     private void drop(Obj o) {
-        if (o.isChar) {
-            if (trySeat(o) || tryBed(o)) { o.sqv = -2.4f; host.sound(S_DROP); return; }
-            startFall(o, 0, 0);
-        } else {
-            if (tryGive(o)) return;
+        resolve(o, fingerX, fingerY);
+        Obj tg = tgObj; int kind = tgKind, slot = tgSlot;
+        tgObj = null; tgKind = K_NONE;
+        if (tg != null && perform(o, tg, kind, slot)) return;
+        if ((System.nanoTime() - lastMoveNs) / 1e9f > .08f) { dragVX = 0; dragVY = 0; }
+        if (o.isChar) startFall(o, 0, 0);
+        else {
             boolean toss = Life.tossable(o);
             startFall(o, toss ? Gfx.clamp(dragVX, -2600, 2600) * .8f : 0, toss ? Gfx.clamp(dragVY, -2600, 1200) * .8f : 0);
             if (!o.falling) { o.sqv = -2.4f; host.sound(S_DROP); }
@@ -1083,83 +1485,240 @@ public final class Game {
         return false;
     }
 
-    private boolean trySeat(Obj o) {
-        Obj best = null; int bestSlot = 0; float bestD = 1e9f;
-        for (Obj s : objs) {
-            if (s.isChar) continue;
-            float[] st = Life.seat(s.prop);
-            if (st == null) continue;
-            float seatY = s.y + st[0] * s.scale;
-            if (o.y < seatY - 150 || o.y > s.y + 50) continue;
-            for (int j = 0; j + 1 < st.length; j++) {
-                float sx = s.x + st[1 + j] * s.scale * (s.flip ? -1 : 1);
-                float d = Math.abs(o.x - sx);
-                if (d < 85 * s.scale && d < bestD && !seatTaken(s, j)) { best = s; bestSlot = j; bestD = d; }
+    /** Carries out an interaction between a character/item and a target. */
+    private boolean perform(Obj o, Obj tg, int kind, int slot) {
+        o.walking = false; o.falling = false; o.nwp = 0;
+        switch (kind) {
+            case K_SIT:
+                if (seatTaken(tg, slot)) return false;
+                o.state = Obj.SIT; o.link = tg; o.slot = slot; o.flip = false;
+                o.sqv = -2.4f; o.setFace(Avatar.F_HAPPY, 1.2f);
+                host.sound(S_DROP);
+                if (Life.vehicle(tg.prop)) { o.emote = 1; o.emoteT = 0; }
+                return true;
+            case K_LIE:
+                if (occupant(tg) != null) return false;
+                o.state = Obj.LIE; o.link = tg; o.slot = tg.flip ? -1 : 1;
+                o.emote = 5; o.emoteT = 0;
+                host.sound(S_DROP);
+                return true;
+            case K_BATHE:
+                if (occupant(tg) != null) return false;
+                o.state = Obj.BATHE; o.link = tg; o.flip = false;
+                o.setFace(Avatar.F_LAUGH, 1.5f);
+                burst(tg.x, tg.y - 130 * tg.scale, 14, 0xFFFFFFFF, 3, 260);
+                host.sound(S_WHOOSH);
+                return true;
+            case K_SLIDE:
+                o.state = Obj.SLIDE; o.link = tg; o.slideT = 0;
+                o.setFace(Avatar.F_LAUGH, 1.6f);
+                host.sound(S_WHOOSH);
+                return true;
+            case K_HUG: {
+                float side = o.x >= tg.x ? 1 : -1;
+                o.x = Gfx.clamp(tg.x + side * 118 * Math.max(o.scale, tg.scale), 60, W - 60);
+                o.y = tg.y;
+                o.flip = side > 0; tg.flip = side < 0;
+                o.hugT = 1.8f; tg.hugT = 1.8f;
+                o.emote = 0; o.emoteT = 0; tg.emote = 0; tg.emoteT = 0;
+                tg.walking = false; tg.act = 0;
+                burst((o.x + tg.x) / 2, o.y - 260 * o.scale, 6, 0xFFFF6F8F, 2, 260);
+                host.sound(S_SPARK);
+                return true;
             }
+            case K_SHOULDER:
+                o.state = Obj.SIT; o.link = tg; o.slot = 0; o.flip = tg.flip;
+                o.setFace(Avatar.F_LAUGH, 1.5f); tg.setFace(Avatar.F_WOW, 1);
+                host.sound(S_SPARK);
+                return true;
+            case K_BOUNCE:
+                o.x = tg.x; o.y = tg.y - 100 * tg.scale;
+                o.falling = true; o.fvx = (rnd.nextFloat() - .5f) * 300; o.vy = -2100; o.peakY = o.y;
+                tg.sqv = -4;
+                o.setFace(Avatar.F_LAUGH, 1.5f);
+                host.sound(S_BOUNCE);
+                return true;
+            case K_GIVE:
+            case K_PICK: {
+                Obj ch = kind == K_GIVE ? tg : o, it = kind == K_GIVE ? o : tg;
+                if (ch.held != null || !Life.holdable(it)) return false;
+                if (it.state == Obj.HELD && it.link != null) it.link.held = null;
+                ch.held = it; it.state = Obj.HELD; it.link = ch; it.falling = false;
+                ch.hopV = 380;
+                host.sound(S_SPARK);
+                if (Life.food(it.prop)) eat(ch);
+                else { ch.emote = 1; ch.emoteT = 0; ch.setFace(Avatar.F_HAPPY, 1.2f); }
+                return true;
+            }
+            case K_IN:
+                if (tg.contents.size() >= Life.capacity(tg.prop)) return false;
+                tg.contents.add(o.prop);
+                objs.remove(o);
+                if (sel == o) sel = tg;
+                tg.wiggle = .8f; tg.sqv = -2;
+                if (tg.prop.equals("fridge")) tg.pstate = 1;
+                burst(tg.x, tg.y - tg.bh * tg.scale * .6f, 5, 0xFFFFE066, 2, 250);
+                host.sound(S_POP);
+                return true;
+            case K_USE:
+                tapObj(tg);
+                return true;
+            default:
+                return false;
         }
-        if (best == null) return false;
-        o.state = Obj.SIT; o.link = best; o.slot = bestSlot; o.walking = false; o.flip = false;
+    }
+
+    /** What a character would naturally do with this prop when sent to it. */
+    private int useKind(Obj ch, Obj q) {
+        if (q.isChar) return K_NONE;
+        if (Life.seat(q.prop) != null && freeSlot(q, ch) >= 0) return K_SIT;
+        if (Life.bed(q.prop) != 0 && occupant(q) == null) return K_LIE;
+        if (Life.tub(q.prop) && occupant(q) == null) return K_BATHE;
+        if (Life.slide(q.prop)) return K_SLIDE;
+        if (Life.bouncy(q.prop) && q.state == Obj.FREE) return K_BOUNCE;
+        if (Life.holdable(q) && ch.held == null && q.state != Obj.HELD) return K_PICK;
+        if (Life.states(q.prop) > 0 || Life.capacity(q.prop) > 0 || q.prop.equals("tree") || q.prop.equals("palm")
+            || q.prop.equals("bush") || q.prop.equals("rocket") || q.prop.equals("camera")) return K_USE;
+        return K_NONE;
+    }
+
+    /** Sends a character walking to a prop (via the ladder if needed) to use it on arrival. */
+    private boolean walkUse(Obj ch, Obj q) {
+        int kind = useKind(ch, q);
+        if (DEBUG) System.out.println("walkUse kind=" + kind + " q=" + q.prop + " chState=" + ch.state);
+        if (kind == K_NONE || ch.state == Obj.HELD) return false;
+        if (ch.state != Obj.FREE) standUp(ch, Avatar.F_NONE);
+        float dir = ch.x < q.x ? -1 : 1;
+        float ux = q.x + dir * Math.min(q.bw * q.scale * .5f + 40, 220);
+        if (kind == K_SIT) {
+            float[] st = Life.seat(q.prop);
+            ux = q.x + st[1 + freeSlot(q, ch)] * q.scale * (q.flip ? -1 : 1);
+        }
+        float baseY = q.state == Obj.ON_TOP && q.link != null ? q.link.y : q.y;
+        float uy = Life.floorBelow(loc, baseY - 4) + 6;
+        planWalk(ch, Gfx.clamp(ux, 60, W - 60), uy);
+        ch.pend = q; ch.pendKind = kind;
+        ch.act = 0; ch.idleT = 8;
         return true;
     }
 
-    private boolean tryBed(Obj o) {
-        for (Obj b : objs) {
-            float m = b.isChar ? 0 : Life.bed(b.prop);
-            if (m == 0) continue;
-            if (Math.abs(o.x - b.x) > b.bw * b.scale * .5f || o.y < b.y + m * b.scale - 200 || o.y > b.y + 60) continue;
-            boolean taken = false;
-            for (Obj q : objs) if (q.link == b && q.state == Obj.LIE) taken = true;
-            if (taken) continue;
-            o.state = Obj.LIE; o.link = b; o.slot = b.flip ? -1 : 1; o.walking = false;
-            o.emote = 5; o.emoteT = 0;
-            return true;
-        }
-        return false;
+    /** Route to (x, y); uses the ladder when the destination is on another floor. */
+    private void planWalk(Obj ch, float x, float y) {
+        float[] f = Life.floors(loc);
+        int from = Life.band(loc, ch.y), to = Life.band(loc, y);
+        ch.nwp = 0;
+        if (from != to && Life.ladder(loc) >= 0) {
+            float lx = Life.ladder(loc) * W;
+            ch.tx = lx; ch.ty = f[from] + 30;
+            ch.wpx[0] = lx; ch.wpy[0] = f[to] + 30;
+            ch.wpx[1] = x; ch.wpy[1] = y;
+            ch.nwp = 2;
+        } else { ch.tx = x; ch.ty = y; }
+        ch.walking = true;
     }
 
-    private boolean tryGive(Obj item) {
-        if (!Life.holdable(item)) return false;
-        float cx = item.x, cy = item.y - item.bh * item.scale * .5f;
-        for (int i = order.size() - 1; i >= 0; i--) {
-            Obj ch = order.get(i);
-            if (!ch.isChar || ch.held != null || ch.state == Obj.LIE || !ch.hit(cx, cy)) continue;
-            ch.held = item; item.state = Obj.HELD; item.link = ch; item.falling = false;
-            ch.hopV = 380; ch.emote = 1; ch.emoteT = 0;
-            host.sound(S_SPARK);
-            return true;
-        }
-        return false;
+    private void arrive(Obj ch, Obj q) {
+        if (!objs.contains(q)) return;
+        int kind = useKind(ch, q);
+        int slot = kind == K_SIT ? freeSlot(q, ch) : 0;
+        perform(ch, q, kind, slot);
     }
 
     private void tapObj(Obj o) {
         host.haptic();
         if (o.isChar) {
             if (o.held != null && Life.food(o.held.prop)) { eat(o); return; }
+            if (o.held != null && o.held.prop.equals("guitar")) { strum(o); return; }
+            if (o.held != null && o.held.prop.equals("camera")) { cameraFlash(o.x, o.y - 300 * o.scale); return; }
+            if (o.state == Obj.LIE) { standUp(o, Avatar.F_HAPPY); o.emote = 6; o.emoteT = 0; host.sound(S_TICK); return; }
             o.hopV = o.state == Obj.FREE ? 560 : 0;
             o.wiggle = o.state == Obj.FREE ? 0 : .6f;
             o.emote = rnd.nextInt(7); o.emoteT = 0;
             host.sound(S_TICK);
             return;
         }
-        int n = Life.states(o.prop);
-        if (o.prop.equals("gift") && o.pstate == 0) {
-            o.pstate = 1; o.wiggle = 1;
-            String[] pool = {"teddy", "ball", "duck", "rocket", "car", "cupcake", "donut", "balloon", "trophy", "icecream"};
-            Obj g = Obj.prop(pool[rnd.nextInt(pool.length)], o.x, o.y - 100 * o.scale);
-            g.scale = o.scale; g.pop = 0;
-            objs.add(g);
-            startFall(g, (rnd.nextFloat() - .5f) * 700, -1500);
-            burst(o.x, o.y - 100 * o.scale, 14, 0xFFFFD43B, 2, 600);
-            host.sound(S_SPARK);
+        float top = o.y - o.bh * o.scale;
+        // containers give back what was put in
+        if (!o.contents.isEmpty() && !(o.prop.equals("fridge") && o.pstate == 0)) {
+            String id = o.contents.remove(o.contents.size() - 1);
+            Obj g = Obj.prop(id, o.x, o.y - o.bh * o.scale * .6f);
+            g.pop = 0; objs.add(g);
+            startFall(g, (rnd.nextFloat() - .5f) * 700, -1300);
+            o.wiggle = .7f;
+            if (o.prop.equals("gift")) o.pstate = 1;
+            host.sound(S_POP);
             return;
         }
+        switch (o.prop) {
+            case "gift":
+                if (o.pstate == 0) {
+                    o.pstate = 1; o.wiggle = 1;
+                    String[] pool = {"teddy", "ball", "duck", "rocket", "car", "cupcake", "donut", "balloon", "trophy", "icecream"};
+                    spawnFrom(pool[rnd.nextInt(pool.length)], o.x, o.y - 100 * o.scale, o.scale);
+                    burst(o.x, o.y - 100 * o.scale, 14, 0xFFFFD43B, 2, 600);
+                    react(o.x, 600, Avatar.F_WOW, 1.4f);
+                    host.sound(S_SPARK);
+                    return;
+                }
+                break;
+            case "tree":
+                o.wiggle = 1;
+                spawnFrom("apple", o.x + (rnd.nextFloat() - .5f) * 140 * o.scale, o.y - 300 * o.scale, o.scale);
+                host.sound(S_TICK);
+                return;
+            case "palm":
+                o.wiggle = 1;
+                spawnFrom("coconut", o.x + 40 * o.scale, o.y - 320 * o.scale, o.scale);
+                host.sound(S_TICK);
+                return;
+            case "bush":
+                o.wiggle = 1;
+                burst(o.x, o.y - 80 * o.scale, 6, 0xFF5BD07A, 0, 300);
+                if (rnd.nextInt(3) == 0) {
+                    String[] pool = {"ball", "duck", "flower", "teddy", "mushroom"};
+                    spawnFrom(pool[rnd.nextInt(pool.length)], o.x, o.y - 120 * o.scale, o.scale);
+                    host.sound(S_SPARK);
+                } else host.sound(S_TICK);
+                return;
+            case "balloon":
+                if (o.state == Obj.FREE) {
+                    burst(o.x, o.y - 220 * o.scale, 18, 0xFFFF5C73, 2, 700);
+                    objs.remove(o); if (sel == o) sel = null;
+                    react(o.x, 500, Avatar.F_WOW, 1);
+                    host.sound(S_BOUNCE);
+                    return;
+                }
+                break;
+            case "rocket":
+                if (o.launchT <= 0) { o.launchT = 3; o.wiggle = .5f; host.sound(S_WHOOSH); return; }
+                break;
+            case "camera":
+                cameraFlash(o.x, o.y - 60 * o.scale);
+                return;
+            case "tub":
+                burst(o.x, o.y - 130 * o.scale, 16, 0xFFFFFFFF, 3, 300);
+                host.sound(S_WHOOSH);
+                return;
+            case "guitar":
+                strum(null);
+                return;
+            case "shelf":
+                spawnFrom("books", o.x, o.y - 200 * o.scale, o.scale);
+                host.sound(S_POP);
+                return;
+            default: break;
+        }
+        int n = Life.states(o.prop);
         if (n > 0) {
             o.pstate = (o.pstate + 1) % n; o.wiggle = .7f;
             host.sound(S_TOGGLE);
-            if (o.prop.equals("lamp") && o.pstate == 1) burst(o.x, o.y - 280 * o.scale, 8, 0xFFFFE066, 2, 300);
+            if (o.prop.equals("lamp")) {
+                if (o.pstate == 1) burst(o.x, o.y - 280 * o.scale, 8, 0xFFFFE066, 2, 300);
+                else react(o.x, 700, Avatar.F_SLEEPY, 1.6f);
+            }
+            if (o.prop.equals("tv") && o.pstate == 2) react(o.x, 900, Avatar.F_LAUGH, 1.2f);
             return;
         }
-        if (o.prop.equals("camera")) { flash = .6f; host.sound(S_TOGGLE); return; }
         if (Life.tossable(o) && o.state == Obj.FREE && !o.falling) {
             startFall(o, (rnd.nextFloat() - .5f) * 900, -1300);
             host.sound(S_BOUNCE);
@@ -1169,22 +1728,48 @@ public final class Game {
         host.sound(S_TICK);
     }
 
+    private void spawnFrom(String id, float x, float y, float sc) {
+        Obj g = Obj.prop(id, x, y);
+        g.scale = Math.min(1.2f, Math.max(.8f, sc)); g.pop = 0;
+        objs.add(g);
+        startFall(g, (rnd.nextFloat() - .5f) * 600, -900);
+    }
+
+    /** Nearby characters show a feeling. */
+    private void react(float x, float radius, int face, float secs) {
+        for (Obj q : objs) if (q.isChar && Math.abs(q.x - x) < radius && q.state != Obj.LIE) q.setFace(face, secs);
+    }
+
+    private void strum(Obj player) {
+        if (player != null) { player.strumT = 2.6f; player.emote = 2; player.emoteT = 0; }
+        for (Obj q : objs)
+            if (q.isChar && q != player && q.state == Obj.FREE && player != null && Math.abs(q.x - player.x) < 600) { q.act = 3; q.actT = 2.6f; }
+        host.sound(S_SPARK);
+    }
+
+    private void cameraFlash(float x, float y) {
+        flash = .6f;
+        for (Obj q : objs) if (q.isChar && q.state != Obj.LIE) { q.setFace(rnd.nextBoolean() ? Avatar.F_WOW : Avatar.F_LAUGH, 1.5f); if (q.held == null) { q.act = 1; q.actT = 1.4f; } }
+        host.sound(S_TOGGLE);
+    }
+
     private void eat(Obj o) {
         Obj f = o.held;
+        if (f == null) return;
         o.chewT = .9f;
         f.bites++;
         float dir = o.flip ? -1 : 1;
-        int col = f.prop.equals("juice") || f.prop.equals("coffee") ? 0xFF8FD8FF : 0xFFE9B36C;
+        int col = Life.drink(f.prop) ? 0xFF8FD8FF : 0xFFE9B36C;
         burst(o.x + 30 * dir * o.scale, o.y + o.dyo - 225 * o.scale, 8, col, 0, 300);
         host.sound(S_BITE);
         if (f.bites >= 3) {
             objs.remove(f); o.held = null;
-            o.emote = 0; o.emoteT = 0;
+            o.emote = 0; o.emoteT = 0; o.setFace(Avatar.F_LOVE, 1.4f);
             if (sel == f) sel = o;
         }
     }
 
-    /** Tapping empty floor sends the selected character walking there. */
+    /** Tapping empty floor sends the selected character (or its vehicle) there. */
     private void tapFloor(float x, float y) {
         Obj ch = sel;
         if (ch == null || !ch.isChar || ch.state == Obj.HELD) { sel = null; return; }
@@ -1192,16 +1777,16 @@ public final class Game {
         int bt = -1;
         for (int i = 0; i < f.length; i += 2) if (y >= f[i] - 20 && y <= f[i + 1]) bt = i;
         if (bt < 0) { sel = null; return; }
-        if (ch.state == Obj.SIT || ch.state == Obj.LIE) {
-            Obj l = ch.link;
-            ch.state = Obj.FREE; ch.link = null;
-            ch.y = Life.floorBelow(loc, l.y - 4);
+        float tx = Gfx.clamp(x, 60, W - 60), ty = Gfx.clamp(y, f[bt] + 8, f[bt + 1] - 4);
+        if (ch.state == Obj.SIT && ch.link != null && !ch.link.isChar && Life.vehicle(ch.link.prop)) {
+            Obj v = ch.link;
+            if (Life.band(loc, v.y) == bt) { v.tx = tx; v.ty = ty; v.walking = true; burst(tx, ty, 1, 0xFFFFFFFF, 1, 0); host.sound(S_WHOOSH); return; }
         }
-        if (Life.band(loc, ch.y) != bt) { sel = null; return; }
-        ch.tx = Gfx.clamp(x, 60, W - 60);
-        ch.ty = Gfx.clamp(y, f[bt] + 8, f[bt + 1] - 4);
-        ch.walking = true; ch.act = 0; ch.idleT = 6 + rnd.nextFloat() * 6;
-        burst(ch.tx, ch.ty, 1, 0xFFFFFFFF, 1, 0);
+        if (ch.state != Obj.FREE) standUp(ch, Avatar.F_NONE);
+        if (Life.band(loc, ch.y) != bt && Life.ladder(loc) < 0) { sel = null; return; }
+        planWalk(ch, tx, ty);
+        ch.pend = null; ch.act = 0; ch.idleT = 6 + rnd.nextFloat() * 6;
+        burst(tx, ty, 1, 0xFFFFFFFF, 1, 0);
         host.sound(S_TICK);
     }
 
@@ -1268,16 +1853,21 @@ public final class Game {
 
     private void applyOption(int g, int i) {
         switch (g) {
-            case 0: work.skin = i; break;
-            case 1: work.hairStyle = i; break;
-            case 2: work.hairColor = i; break;
-            case 3: work.eyes = i; break;
-            case 4: work.mouth = i; break;
-            case 5: work.top = i; break;
-            case 6: work.topColor = i; break;
-            case 7: work.bottom = i; break;
-            case 8: work.acc = i; break;
-            case 9: work.accColor = i; break;
+            case 0: work.skin = i % Look.SKIN.length; break;
+            case 1: work.hairStyle = i % Look.N_HAIR; break;
+            case 2: work.hairColor = i % Look.HAIR.length; break;
+            case 3: work.eyes = i % Look.N_EYES; break;
+            case 4: work.mouth = i % Look.N_MOUTH; break;
+            case 5: work.top = i % Look.N_TOP; break;
+            case 6: work.topColor = i % Look.CLOTH.length; break;
+            case 7: work.bottom = i % Look.PANTS.length; break;
+            case 8: work.acc = i % Look.N_ACC; break;
+            case 9: work.accColor = i % Look.CLOTH.length; break;
+            case 10: work.body = i % Look.N_BODY; break;
+            case 11: work.head = i % Look.N_HEAD; break;
+            case 12: work.bstyle = i % Look.N_BSTYLE; break;
+            case 13: work.shoe = i % Look.SHOES.length; break;
+            case 14: work.freckles = i % 2; break;
             default: break;
         }
         edHopV = 380;
@@ -1340,8 +1930,14 @@ public final class Game {
         float left = x0 + 30;
         switch (edTab) {
             case 0:
+                label("Body", left);
+                cards(10, Look.N_BODY, work.body, left, cw);
+                label("Head shape", left);
+                cards(11, Look.N_HEAD, work.head, left, cw);
                 label("Skin colour", left);
                 swatches(0, Look.SKIN, work.skin, left, cw);
+                label("Freckles", left);
+                cards(14, 2, work.freckles, left, cw);
                 break;
             case 1:
                 label("Hairstyle", left);
@@ -1360,11 +1956,15 @@ public final class Game {
                 cards(5, Look.N_TOP, work.top, left, cw);
                 label("Top colour", left);
                 swatches(6, Look.CLOTH, work.topColor, left, cw);
-                label("Trousers", left);
+                label("Bottoms", left);
+                cards(12, Look.N_BSTYLE, work.bstyle, left, cw);
+                label("Bottoms colour", left);
                 swatches(7, Look.PANTS, work.bottom, left, cw);
+                label("Shoes", left);
+                swatches(13, Look.SHOES, work.shoe, left, cw);
                 break;
             default:
-                label("Accessory", left);
+                label("Hats & accessories", left);
                 cards(8, Look.N_ACC, work.acc, left, cw);
                 label("Accessory colour", left);
                 swatches(9, Look.CLOTH, work.accColor, left, cw);
@@ -1424,17 +2024,25 @@ public final class Game {
             c.clipRect(-size / 2 + 4, -size / 2 + 4, size / 2 - 4, size / 2 - 4);
             Look l = work.copy();
             float cy, k;
+            Pose tp = IDLE;
             switch (g) {
-                case 1: l.hairStyle = i; cy = -272; k = .66f; break;
+                case 1: l.hairStyle = i; l.acc = 0; cy = -290; k = .5f; break;
                 case 3: l.eyes = i; cy = -262; k = 1.08f; break;
                 case 4: l.mouth = i; cy = -230; k = 1.3f; break;
                 case 5: l.top = i; cy = -128; k = .6f; break;
-                default: l.acc = i; cy = -290; k = .62f; break;
+                case 10: l.body = i; cy = -Avatar.height(l) / 2 - 8; k = 118 / (Avatar.height(l) + 20); break;
+                case 11: l.head = i; l.acc = 0; cy = -270; k = .56f; break;
+                case 12: l.bstyle = i; cy = -80; k = .66f; break;
+                case 14: l.freckles = i; cy = -244; k = 1.3f; break;
+                default: l.acc = i; cy = -300; k = .5f; break;
             }
+            if (g == 1 || g == 11 || g == 3 || g == 4 || g == 14 || g == 8) cy = cy - (Avatar.neckY(l) + 196) * 0;
             c.scale(k, k);
+            // head-based crops follow the body's neck position
+            if (g != 5 && g != 10 && g != 12) cy += (Avatar.neckY(l) + 196) * 1 - 0 + (1 - Avatar.BODY[l.body % 6][3]) * 0;
             c.translate(0, -cy);
             Gfx.ol(5f / k);
-            Avatar.draw(c, l, IDLE);
+            Avatar.draw(c, l, tp);
             Gfx.ol(0);
             c.restore();
             if (on) rrs(c, -size / 2, -size / 2, size, size, 28, 0xFF6C7BFF, 6);
@@ -1465,10 +2073,41 @@ public final class Game {
         Obj ic = Obj.prop("icecream", 0, 0); ic.state = Obj.HELD; ic.link = e; e.held = ic; objs.add(ic);
         Obj f = Obj.character(Look.PRESETS[3].copy(), W * .5f, 985); f.walking = true; f.tx = W * .9f; f.ty = 985; objs.add(f);
         Obj s2 = Obj.character(Look.PRESETS[4].copy(), 0, 0); s2.state = Obj.SIT; s2.link = sofa; s2.slot = 1; s2.act = 1; s2.actT = 99; objs.add(s2);
+        Obj tub = Obj.prop("tub", W * .68f, 545); tub.contents.add("duck"); objs.add(tub);
+        Obj bather = Obj.character(Look.PRESETS[8].copy(), 0, 0); bather.state = Obj.BATHE; bather.link = tub; objs.add(bather);
+        Obj dad = Obj.character(Look.PRESETS[6].copy(), W * .5f, 985); objs.add(dad);
+        Obj tod = Obj.character(Look.PRESETS[3].copy(), 0, 0); tod.state = Obj.SIT; tod.link = dad; objs.add(tod);
+        objs.remove(f); objs.remove(e); objs.remove(ic); objs.remove(gift);
+        Obj e2 = Obj.character(Look.PRESETS[9].copy(), W * .88f, 545); objs.add(e2);
+        Obj ted = Obj.prop("teddy", 0, 0); ted.state = Obj.HELD; ted.link = e2; e2.held = ted; objs.add(ted);
         for (Obj o : objs) { o.pop = 1; o.idleT = 99; }
+        a.setFace(Avatar.F_LAUGH, 99); b.setFace(Avatar.F_SLEEPY, 99); d.setFace(Avatar.F_HAPPY, 99);
+    }
+
+    Obj debugSel() { return sel; }
+
+    void debugDrag() {
+        objs.clear();
+        Obj sofa = Obj.prop("sofa", W * .3f, 965); objs.add(sofa);
+        Obj kid = Obj.character(Look.PRESETS[1].copy(), W * .32f, 830); objs.add(kid);
+        Obj tub = Obj.prop("tub", W * .7f, 545); objs.add(tub);
+        Obj kid2 = Obj.character(Look.PRESETS[7].copy(), W * .55f, 985); objs.add(kid2);
+        Obj cake = Obj.prop("cake", W * .66f, 760); objs.add(cake);
+        for (Obj o : objs) { o.pop = 1; o.idleT = 99; }
+        dragObj = kid; moved = true; down = true; mode = M_DRAG; kid.lift = 1;
+        resolve(kid, kid.x, kid.y - 150);
     }
 
     int debugFocus() { return mapFocus; }
+    void debugEditorAll(Canvas cv) {
+        int keep = screen;
+        screen = EDITOR;
+        for (int tab = 0; tab < 5; tab++) { edTab = tab; for (int i = 0; i < 2; i++) { update(.03f); draw(cv); } }
+        for (int g = 0; g < 15; g++) for (int i = 0; i < 13; i++) applyOption(g, i);
+        draw(cv);
+        screen = keep;
+    }
+
     void debugTray(int tab) { trayTab = tab; trayA = 1; trayCat = 0; }
 
     // ================================================================== called after the editor transition finishes

@@ -40,7 +40,7 @@ final class Scenes {
                 "tub:.66:540:.95", "toilet:.88:545:.85", "frame:.28:360:.9",
                 "rug:.2:975:1", "sofa:.18:965:1", "tv:.38:960:.95", "plant:.05:970:.9",
                 "fridge:.62:965:1", "stove:.75:962:.95", "table:.88:970:.85", "chair:.82:975:.8",
-                "@0:.49:525:1", "@1:.47:968:1"};
+                "@0:.42:525:1", "@1:.3:968:1", "duck:.66:500:1"};
             case "school": return new String[]{
                 "desk:.22:860:1", "desk:.42:860:1", "desk:.62:860:1", "desk:.22:1010:1", "desk:.42:1010:1", "desk:.62:1010:1",
                 "shelf:.93:800:.9", "globe:.82:760:.8", "clock:.6:200:.8", "backpack:.08:830:.8",
@@ -57,7 +57,7 @@ final class Scenes {
                 "@7:.82:770:1", "@9:.36:975:1"};
             case "park": return new String[]{
                 "tree:.08:700:1", "tree:.92:690:1.1", "swing:.3:760:1", "slide:.64:760:1", "bench:.5:960:1",
-                "flower:.2:900:1", "flower:.24:915:.8", "bush:.78:930:1", "ball:.42:1020:.8", "rock:.9:950:.8",
+                "flower:.2:900:1", "flower:.24:915:.8", "bush:.78:930:1", "ball:.42:1020:.8", "rock:.9:950:.8", "car:.86:1050:1.5", "mushroom:.58:1010:1",
                 "@1:.12:900:1", "@2:.7:930:1"};
             case "beach": return new String[]{
                 "umbrella:.2:880:1", "palm:.06:740:1", "palm:.93:760:1", "sandcastle:.5:960:1", "surfboard:.78:900:.9",
@@ -189,6 +189,11 @@ final class Scenes {
         for (int i = 0; i < 4; i++) { rr(c, x1 - 632 + i * 138, 648, 130, 94, 10, 0xFFFFB3C0); ci(c, x1 - 590 + i * 138, 700, 6, 0xFFFFFFFF); }
         // living room shelf lights
         for (int i = 0; i < 9; i++) ci(c, x0 + 40 + i * 60, 636 + (i % 2) * 14, 8, i % 3 == 0 ? 0xFFFF6F8F : (i % 3 == 1 ? 0xFFFFE066 : 0xFF6FC3FF));
+        // ladder linking the two floors
+        float lx = W * .5f;
+        rr(c, lx - 50, 452, 100, 30, 10, 0xFF8A5A30);
+        ln(c, lx - 34, 470, lx - 34, 985, 10, 0xFFC98A44); ln(c, lx + 34, 470, lx + 34, 985, 10, 0xFFC98A44);
+        for (float ry = 500; ry < 980; ry += 52) ln(c, lx - 34, ry, lx + 34, ry, 8, 0xFFD9A066);
         // house frame outline
         rrs(c, x0 - 14, 138, x1 - x0 + 28, 862, 18, 0xFFE5C48E, 8);
     }

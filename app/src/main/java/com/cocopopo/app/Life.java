@@ -1,6 +1,6 @@
 package com.cocopopo.app;
 
-/** Rules of the dollhouse world: what can be sat on, slept in, stood on, held, eaten or toggled. */
+/** Rules of the dollhouse world: what can be sat on, slept in, ridden, filled, held, eaten or toggled. */
 final class Life {
     private Life() {}
 
@@ -14,9 +14,17 @@ final class Life {
             case "toilet": return new float[]{-104, 4};
             case "swing": return new float[]{-92, 0};
             case "wheelchair": return new float[]{-86, -8};
+            case "car": return new float[]{-58, -14};
+            case "rock": return new float[]{-70, 0};
             default: return null;
         }
     }
+
+    /** Vehicles carry their sitter when told to move. */
+    static boolean vehicle(String id) { return id.equals("car") || id.equals("wheelchair"); }
+
+    /** Seats whose front part is drawn over the sitter (so legs end up "inside"). */
+    static boolean coversSitter(String id) { return id.equals("car"); }
 
     /** Mattress height for beds, or 0 when not a bed. */
     static float bed(String id) {
@@ -25,6 +33,12 @@ final class Life {
         return 0;
     }
 
+    static boolean tub(String id) { return id.equals("tub"); }
+
+    static boolean slide(String id) { return id.equals("slide"); }
+
+    static boolean bouncy(String id) { return id.equals("mushroom"); }
+
     /** Height of a top surface small items can be placed on, or 0. */
     static float surface(String id) {
         switch (id) {
@@ -32,7 +46,21 @@ final class Life {
             case "desk": return -150;
             case "dresser": return -200;
             case "register": return -122;
-            case "tv": return 0;
+            case "tv": return -228;
+            default: return 0;
+        }
+    }
+
+    /** Maximum number of things a container holds (0 = not a container). */
+    static int capacity(String id) {
+        switch (id) {
+            case "fridge": return 8;
+            case "cart": return 6;
+            case "crate": return 6;
+            case "backpack": return 4;
+            case "tub": return 4;
+            case "gift": return 3;
+            case "shelf": return 8;
             default: return 0;
         }
     }
@@ -44,19 +72,42 @@ final class Life {
     static boolean food(String id) {
         switch (id) {
             case "cake": case "pizza": case "burger": case "icecream": case "donut": case "apple":
-            case "juice": case "cupcake": case "coffee": case "popcorn": case "cotton":
+            case "juice": case "cupcake": case "coffee": case "popcorn": case "cotton": case "coconut":
                 return true;
             default: return false;
         }
     }
 
+    static boolean drink(String id) { return id.equals("juice") || id.equals("coffee"); }
+
+    /** Per-prop flag, independent of size. */
     static boolean holdable(Obj o) {
-        if (o.isChar || wall(o.prop) || seat(o.prop) != null || bed(o.prop) != 0) return false;
-        return Math.max(o.bw, o.bh) * o.scale <= 200 || o.prop.equals("balloon") || o.prop.equals("guitar") || o.prop.equals("surfboard");
+        if (o.isChar) return false;
+        switch (o.prop) {
+            case "cake": case "pizza": case "burger": case "icecream": case "donut": case "apple": case "juice":
+            case "cupcake": case "coffee": case "popcorn": case "cotton": case "coconut":
+            case "ball": case "teddy": case "balloon": case "blocks": case "guitar": case "duck": case "flower":
+            case "mushroom": case "backpack": case "books": case "globe": case "gift": case "trophy": case "camera":
+            case "medkit": case "plant": case "surfboard": case "crate": case "rocket":
+                return true;
+            default: return false;
+        }
+    }
+
+    /** 0 one hand, 1 both hands in front, 2 overhead. */
+    static int holdType(String id) {
+        switch (id) {
+            case "teddy": case "gift": case "crate": case "books": case "globe": case "cake": case "blocks":
+            case "plant": case "medkit": case "pizza": case "backpack": case "rocket":
+                return 1;
+            case "balloon": case "trophy":
+                return 2;
+            default: return 0;
+        }
     }
 
     /** Small things can be tossed and bounce. */
-    static boolean tossable(Obj o) { return !o.isChar && Math.max(o.bw, o.bh) * o.scale <= 260 && !wall(o.prop) && !floats(o.prop); }
+    static boolean tossable(Obj o) { return !o.isChar && holdable(o) && !floats(o.prop); }
 
     /** Props that react to a tap by changing state; returns number of states (0 = not interactive). */
     static int states(String id) {
@@ -66,6 +117,7 @@ final class Life {
             case "fridge": return 2;
             case "stove": return 2;
             case "gift": return 2;
+            case "umbrella": return 2;
             default: return 0;
         }
     }
@@ -83,6 +135,9 @@ final class Life {
             default: return new float[]{790, 1076};
         }
     }
+
+    /** x (as a fraction of the width) of the ladder linking floor bands, or -1. */
+    static float ladder(String loc) { return loc.equals("home") ? .5f : -1; }
 
     /** Where something released at (x, y) comes to rest on the floor. */
     static float floorBelow(String loc, float y) {

@@ -39,3 +39,28 @@ world map) and its well-known UX conventions.
 
 ## Persistence
 - ✅ **P1** Every location and the custom characters are remembered between sessions, including who sits where and who holds what.
+
+## v1.2 – from the product design review (docs/DESIGN_PROPOSAL.md)
+- ✅ **I-01** Forgiving drop-target resolver (finger, body centre or feet; scale-aware zones)
+- ✅ **I-02** Drop-target glow + action badge while dragging (sit, sleep, give, put in, bath, slide, hug, shoulder ride, bounce)
+- ✅ **I-03** Per-prop rules table (holdability no longer depends on size; fixes cotton candy / plant)
+- ✅ **I-04** Bathtub: bathe with bubbles, toys float
+- ✅ **I-05** Slide down the slide; ride the car / wheelchair and drive it by tapping the floor; rocket launches
+- ✅ **I-06** Handed food gets an automatic first bite
+- ✅ **I-07** Containers: fridge, cart, crate, backpack, tub, gift box, shelf (drop in, tap to take out)
+- ✅ **I-08** Character ↔ character: hug, shoulder ride
+- ✅ **I-09** Walk-and-use: select a character, tap any prop → it walks there (via the ladder if needed) and uses it
+- ✅ **I-10** Context reactions: TV watchers, guitar makes friends dance, camera poses, gift WOW, lamp-off yawns, balloon pop
+- ✅ **I-11** Autonomy: characters pick free seats, snacks, toys, the tub and the slide on their own; eat, get up, put things down
+- ✅ **I-12** Secrets: tree drops apples, palm drops coconuts, bushes hide toys, mushroom is a bounce pad
+- ✅ **C-01** Expression system (eyes + brows + mouth together; eyes with whites that look at things)
+- ✅ **C-02** Front sitting pose, bath pose, two-hand and overhead holds, hug arms, mitten hands
+- ✅ **C-03** Body types: kid, toddler, teen, adult, round, elder (presets now differ)
+- ✅ **C-05 (part)** Bottoms: trousers / shorts / skirt; coloured shoes
+- ✅ **C-06 (part)** New hats: party hat, cat ears, flower crown
+- ✅ **C-07 (part)** Head shapes (round, squircle, bean), freckles
+- ✅ **C-08 (part)** New hair: mohawk, top bun, braids, curly top; editor thumbnails fixed
+- ✅ **U-01** Shimmer hints on interactive props
+- ✅ **W-02** Ladder linking the home's two floors
+- ⏳ Still open from the proposal: high-five / hold hands, side sitting & real lying pose, 3/4 head turn, wearables in-world,
+  cooking, hospital loop, day/night, pocket to carry characters between places, salon location.

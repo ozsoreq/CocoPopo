@@ -27,7 +27,7 @@ final class PropArt {
         "3|swing|Swing|320|340", "3|slide|Slide|320|330",
         "4|backpack|Backpack|120|150", "4|books|Books|140|90", "4|globe|Globe|120|160", "4|bench|Bench|320|180",
         "4|frame|Picture|130|160", "4|gift|Gift|130|130", "4|trophy|Trophy|120|170", "4|camera|Camera|130|100",
-        "0|hbed|Hospital bed|380|240", "4|ivstand|IV stand|110|350", "4|crate|Fruit crate|180|120", "4|register|Register|200|180", "1|coffee|Coffee|80|90", "3|surfboard|Surf board|110|300", "1|popcorn|Popcorn|110|160", "1|cotton|Cotton candy|100|210", "4|medkit|Med kit|130|110", "4|cart|Cart|200|190", "4|wheelchair|Wheelchair|170|210", "4|clock|Clock|120|120",
+        "0|hbed|Hospital bed|380|240", "4|ivstand|IV stand|110|350", "4|crate|Fruit crate|180|120", "4|register|Register|200|180", "1|coffee|Coffee|80|90", "3|surfboard|Surf board|110|300", "1|popcorn|Popcorn|110|160", "1|cotton|Cotton candy|100|210", "1|coconut|Coconut|80|80", "4|medkit|Med kit|130|110", "4|cart|Cart|200|190", "4|wheelchair|Wheelchair|170|210", "4|clock|Clock|120|120",
     };
 
     static final class Def {
@@ -70,6 +70,19 @@ final class PropArt {
             rr(c, -60, -160, 238, 76, 26, 0xFF8E9BFF);
             rr(c, -60, -160, 238, 22, 11, 0xFFA9B4FF);
             for (int i = 0; i < 5; i++) ci(c, -24 + i * 44, -112, 6, 0xFFC8CEFF);
+        }
+    }
+
+    /** Front part drawn over a character sitting/bathing inside the prop. */
+    static void front(Canvas c, String id, float t) {
+        if (id.equals("tub")) {
+            rr(c, -176, -120, 352, 104, 50, 0xFFC3E8FA);
+            for (int i = 0; i < 7; i++) ci(c, -130 + i * 42, -122 - (i % 3) * 7 + (float) Math.sin(t * 3 + i) * 3, 18 - (i % 2) * 5, 0xFFFFFFFF);
+        } else if (id.equals("car")) {
+            rr(c, -100, -62, 200, 40, 16, 0xFFFF6F61);
+            ci(c, -56, -22, 22, 0xFF2B2230); ci(c, 56, -22, 22, 0xFF2B2230);
+            ci(c, -56, -22, 10, 0xFFDDE4EE); ci(c, 56, -22, 10, 0xFFDDE4EE);
+            ci(c, 94, -44, 6, 0xFFFFE066);
         }
     }
 
@@ -412,6 +425,11 @@ final class PropArt {
                 ov(c, -30, -22, 30, 14, 0xFF8E98AB);
                 break;
             case "umbrella":
+                if (st == 1) {
+                    rr(c, -5, -280, 10, 280, 4, 0xFFF3F0E8);
+                    poly(c, 0xFFFF5C73, -18, -180, 18, -180, 6, -300, -6, -300);
+                    break;
+                }
                 rr(c, -5, -280, 10, 280, 4, 0xFFF3F0E8);
                 for (int i = 0; i < 6; i++) pie(c, 0, -216, 140, 90, 180 + i * 30, 30, i % 2 == 0 ? 0xFFFF5C73 : 0xFFFFFFFF);
                 ci(c, 0, -300, 8, 0xFFF3F0E8);
@@ -558,6 +576,10 @@ final class PropArt {
                 ln(c, 0, -80, 0, 0, 8, 0xFFF3E1B5);
                 ci(c, -30, -134, 30, 0xFFFF9EC4); ci(c, 30, -134, 30, 0xFFFF9EC4);
                 ci(c, 0, -158, 38, 0xFFFFB4D3); ci(c, 0, -118, 34, 0xFFFFC6DD); ci(c, -14, -170, 12, 0xFFFFD6E8);
+                break;
+            case "coconut":
+                ci(c, 0, -38, 36, 0xFF8A5A30);
+                ci(c, -10, -50, 5, 0xFF5B3A1E); ci(c, 6, -54, 5, 0xFF5B3A1E); ci(c, -2, -40, 5, 0xFF5B3A1E);
                 break;
             case "medkit":
                 rr(c, -52, -90, 104, 90, 14, WHITE);

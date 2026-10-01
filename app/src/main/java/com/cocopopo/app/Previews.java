@@ -60,6 +60,7 @@ public final class Previews {
                 g.screen = Game.SCENE; g.enterScene("home");
                 g.debugLife();
             }
+            if (a[0].equals("drag")) { g.screen = Game.SCENE; g.enterScene("home"); g.debugDrag(); g.draw(c); return; }
             if (a[0].equals("tray")) { g.screen = Game.SCENE; g.enterScene(a[1]); g.debugTray(Integer.parseInt(a[2])); }
             for (int i = 0; i < 40; i++) g.update(.0503f);
             g.draw(c);
@@ -114,7 +115,7 @@ public final class Previews {
         Obj apple = Obj.prop("apple", 1100, 965); g.objs.add(apple);
         Obj ball = Obj.prop("ball", 1250, 1040); g.objs.add(ball);
         Obj kid = Obj.character(Look.PRESETS[1].copy(), 800, 970); g.objs.add(kid);
-        for (Obj o : g.objs) o.pop = 1;
+        for (Obj o : g.objs) { o.pop = 1; o.idleT = 9999; }
         for (int i = 0; i < 5; i++) frame(g, c);
 
         drag(g, c, kid.x, kid.y - 150, 400 - 86 + 5, 960 - 150);
@@ -137,7 +138,7 @@ public final class Previews {
         g.pause();
         g.enterScene("home");
         Obj kid2 = null;
-        for (Obj o : g.objs) if (o.isChar) kid2 = o;
+        for (Obj o : g.objs) if (o.isChar) { kid2 = o; o.idleT = 9999; }
         log.append("reload keeps holding: " + (kid2 != null && kid2.held != null) + "\n");
         for (int i = 0; i < 5; i++) frame(g, c);
         for (int b = 0; b < 3; b++) { tap(g, c, kid2.x, kid2.y - 300); for (int i = 0; i < 30; i++) frame(g, c); }
@@ -149,6 +150,7 @@ public final class Previews {
         frame(g, c);
         drag(g, c, cake.x, cake.y - 40, tb.x + 20, tb.y - 400);
         for (int i = 0; i < 60; i++) frame(g, c);
+        log.append("  dbg cake state=" + cake.state + " " + (int) cake.x + "," + (int) cake.y + " table " + (int) tb.x + "," + (int) tb.y + " link=" + (cake.link == null ? "-" : cake.link.isChar ? "char" : cake.link.prop) + "\n");
         log.append("cake on table: " + (cake.state == Obj.ON_TOP && cake.link == tb) + "\n");
 
         float bx0 = bl.x;
@@ -164,6 +166,61 @@ public final class Previews {
         for (int i = 0; i < 20; i++) frame(g, c);
         log.append("walking: " + (kid2.walking || Math.abs(kid2.x - kx) > 50) + "\n");
 
+        // ---- new verbs
+        g.objs.clear();
+        Obj tub = Obj.prop("tub", 1300, 540); Obj slide = Obj.prop("slide", 760, 1000); Obj cart = Obj.prop("cart", 1500, 1000);
+        Obj sofa2 = Obj.prop("sofa", 520, 960); Obj car = Obj.prop("car", 1000, 1050); car.scale = 1.6f;
+        Obj m1 = Obj.character(Look.PRESETS[0].copy(), 900, 540), m2 = Obj.character(Look.PRESETS[5].copy(), 1100, 1000);
+        Obj duck = Obj.prop("duck", 1600, 1000), mush = Obj.prop("mushroom", 1750, 1000);
+        Obj[] all = {tub, slide, cart, sofa2, car, m1, m2, duck, mush};
+        for (Obj o : all) { o.pop = 1; o.idleT = 999; g.objs.add(o); }
+        for (int i = 0; i < 5; i++) frame(g, c);
+        drag(g, c, m1.x, m1.y - 150, tub.x, tub.y - 150);
+        for (int i = 0; i < 10; i++) frame(g, c);
+        log.append("bathe: " + (m1.state == Obj.BATHE) + "\n");
+        drag(g, c, duck.x, duck.y - 40, cart.x, cart.y - 120);
+        for (int i = 0; i < 10; i++) frame(g, c);
+        log.append("duck in cart: " + cart.contents + "\n");
+        tap(g, c, cart.x, cart.y - 90);
+        for (int i = 0; i < 60; i++) frame(g, c);
+        log.append("tap cart pops it out: " + cart.contents.size() + " objs=" + g.objs.size() + "\n");
+        drag(g, c, m1.x, m1.y - 120, slide.x - 100, slide.y - 300);
+        for (int i = 0; i < 6; i++) frame(g, c);
+        boolean sliding = m1.state == Obj.SLIDE;
+        for (int i = 0; i < 60; i++) frame(g, c);
+        log.append("slide: " + sliding + " then free=" + (m1.state == Obj.FREE) + "\n");
+        drag(g, c, m1.x, m1.y - 150, m2.x + 30, m2.y - 170);
+        for (int i = 0; i < 5; i++) frame(g, c);
+        log.append("hug: " + (m1.hugT > 0 && m2.hugT > 0) + "\n");
+        for (int i = 0; i < 80; i++) frame(g, c);
+        drag(g, c, m1.x, m1.y - 150, m2.x, m2.y + Avatar.neckY(m2.look) - 90);
+        for (int i = 0; i < 10; i++) frame(g, c);
+        log.append("shoulder ride: " + (m1.state == Obj.SIT && m1.link == m2) + "\n");
+        // walk-and-use: select the lower character, tap the sofa
+        log.append("  dbg rider at " + (int) m1.x + "," + (int) m1.y + " carrier " + (int) m2.x + "," + (int) m2.y + "\n");
+        drag(g, c, m1.x, m1.y - 150, 900, 540 - 150);   // put m1 upstairs
+        for (int i = 0; i < 40; i++) frame(g, c);
+        log.append("  dbg after upstairs drag m1 " + (int) m1.x + "," + (int) m1.y + " st=" + m1.state + " m2 " + (int) m2.x + "," + (int) m2.y + " st=" + m2.state + "\n");
+        tap(g, c, m1.x, m1.y - 200);
+        frame(g, c);
+        Obj selBefore = g.debugSel();
+
+        tap(g, c, sofa2.x, sofa2.y - 60);
+        log.append("  dbg selBefore=m1? " + (selBefore == m1) + " after tap sofa sel=" + (g.debugSel() == m1 ? "m1" : g.debugSel() == null ? "null" : (g.debugSel().isChar ? "char" : g.debugSel().prop)) + " pend=" + (m1.pend != null) + " walking=" + m1.walking + "\n");
+        for (int i = 0; i < 600 && m1.state != Obj.SIT; i++) frame(g, c);
+        log.append("  dbg m1 state=" + m1.state + " x=" + (int) m1.x + " y=" + (int) m1.y + " walking=" + m1.walking + " pend=" + (m1.pend != null) + " sel=" + (g.debugSel() == m1) + "\n");
+        log.append("walk downstairs via ladder & sit on sofa: " + (m1.state == Obj.SIT && m1.link == sofa2) + "\n");
+        drag(g, c, m2.x, m2.y - 150, car.x - 20, car.y - 140);
+        for (int i = 0; i < 6; i++) frame(g, c);
+        log.append("  dbg m2 state=" + m2.state + " link=" + (m2.link == null ? "-" : (m2.link.isChar ? "char" : m2.link.prop)) + " x=" + (int) m2.x + " y=" + (int) m2.y + "\n");
+        log.append("ride car: " + (m2.state == Obj.SIT && m2.link == car) + "\n");
+        tap(g, c, m2.x, m2.y - 200); frame(g, c);
+        tap(g, c, 1700, 1040);
+        for (int i = 0; i < 90; i++) frame(g, c);
+        log.append("car drove: x=" + (int) car.x + " rider follows=" + (Math.abs(m2.x - car.x) < 100) + "\n");
+        g.debugEditorAll(c);
+        log.append("editor all tabs ok\n");
+
         // let life run for a while in every place
         for (Scenes.Loc l : Scenes.ALL) { g.enterScene(l.id); for (int i = 0; i < 400; i++) frame(g, c); }
         log.append("all scenes ran 12s of life ok\n");
@@ -176,17 +233,22 @@ public final class Previews {
 
     private static void drag(Game g, Canvas c, float x0, float y0, float x1, float y1) {
         float s = g.scale;
+        g.draw(c);
         g.touch(0, x0 * s, y0 * s); frame(g, c);
         for (int i = 1; i <= 12; i++) { g.touch(1, (x0 + (x1 - x0) * i / 12) * s, (y0 + (y1 - y0) * i / 12) * s); frame(g, c); }
         for (int i = 0; i < 4; i++) { g.touch(1, x1 * s, y1 * s); frame(g, c); }
+        try { Thread.sleep(100); } catch (InterruptedException e) { }
         g.touch(2, x1 * s, y1 * s); frame(g, c);
     }
 
-    private static void frame(Game g, Canvas c) { g.update(.03f); g.draw(c); }
+    private static int fc;
+
+    private static void frame(Game g, Canvas c) { g.update(.03f); if (fc++ % 6 == 0) g.draw(c); }
 
     private static void tap(Game g, Canvas c, float x, float y) {
         float s = g.scale;
         if (x > g.W * s * 0 && false) return;
+        g.draw(c);
         g.touch(0, x, y); frame(g, c); g.touch(2, x, y); frame(g, c);
     }
 }

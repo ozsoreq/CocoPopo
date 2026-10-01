@@ -7,6 +7,10 @@ characters, and play: drag people and furniture around, make them emote, take ph
 |---|---|
 | ![map](docs/g_map.png) | ![life](docs/g_life.png) |
 
+| Drag targets glow | New cast |
+|---|---|
+| ![drag](docs/g_drag.png) | ![cast](docs/cast.png) |
+
 | Home | School |
 |---|---|
 | ![home](docs/g_scene_home.png) | ![school](docs/g_scene_school.png) |
@@ -29,7 +33,13 @@ See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for the full feature list.
 * **Sit & sleep** – drop a character on a chair, sofa, bench, toilet, swing or wheelchair to sit; on a bed to sleep.
 * **Hold & eat** – drop an item on a character to hand it over; tap a character holding food to eat it bite by bite.
 * **Gravity & toss** – things fall to the floor, small items can be put on tables or flicked so they bounce. Tap a ball to kick it.
-* **Tap props** – lamp on/off, TV channels, fridge door, stove, gift box surprise.
+* **Tap props** – lamp on/off, TV channels, fridge door, stove, gift box surprise, rocket launch, trees drop fruit, bushes hide toys.
+* **Glow targets** – while dragging, whatever you can interact with glows and shows a badge (sit, sleep, bath, slide, give, put in, hug, ride on shoulders, bounce).
+* **Walk & use** – select a character and tap any prop: it walks there (using the ladder at home) and uses it.
+* **Bath, slide, car** – drop a character in the tub, at the top of the slide, or in the car (then tap the floor to drive).
+* **Containers** – drop items into the fridge, cart, crate, backpack, tub or an open gift; tap to take them out.
+* **Friends** – drop one character on another to hug, or on their head for a shoulder ride.
+* **Makeover** – 6 body types, 3 head shapes, eyes that look at things, expressions, 13 hairstyles, skirts/shorts, coloured shoes, hats.
 
 * **Places** – Cozy Home (2-storey cutaway), School, Hospital, Market, Café, Park, Beach, Funfair. The pink button (top-left) opens the character creator.
 * **Selection menu** – tapping something also shows: edit (characters), emote, flip, bigger, smaller, copy, delete.

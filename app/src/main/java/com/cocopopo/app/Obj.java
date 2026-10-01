@@ -19,7 +19,7 @@ final class Obj {
     float vx;
 
     // life simulation
-    static final int FREE = 0, SIT = 1, LIE = 2, HELD = 3, ON_TOP = 4;
+    static final int FREE = 0, SIT = 1, LIE = 2, HELD = 3, ON_TOP = 4, BATHE = 5, SLIDE = 6;
     int state;
     Obj link;           // seat / bed / holder / surface this object belongs to
     int slot;           // seat slot index
@@ -40,9 +40,26 @@ final class Obj {
     float peakY, dyo;
     float ds = 1;      // extra draw scale (held items)
     int tmpLink = -1;
+    final java.util.ArrayList<String> contents = new java.util.ArrayList<String>();
+    Obj pend;           // walk-and-use target
+    int pendKind, pendSlot;
+    final float[] wpx = new float[4], wpy = new float[4];
+    int nwp;            // remaining waypoints after (tx, ty)
+    int faceId;         // temporary expression
+    float faceT, hugT, strumT, slideT, launchT, glance, glanceT;
+    float shimmerT;
+
+    void setFace(int f, float secs) { faceId = f; faceT = secs; }
+
+    void sizeFromLook() {
+        float[] b = Avatar.BODY[look.body % Avatar.BODY.length];
+        bw = Avatar.W * Math.max(1, b[1]);
+        bh = Avatar.height(look) + 10;
+    }
 
     float sortY() {
-        if (state == SIT || state == LIE || state == ON_TOP) return link != null ? link.y + 1 : y;
+        if (state == SIT && link != null && link.isChar) return link.y - 1; // shoulder rider sits behind the carrier's head
+        if (state == SIT || state == LIE || state == ON_TOP || state == BATHE || state == SLIDE) return link != null ? link.y + 1 : y;
         if (state == HELD && link != null) return link.y + 1;
         return y;
     }
@@ -50,7 +67,7 @@ final class Obj {
     static Obj character(Look l, float x, float y) {
         Obj o = new Obj();
         o.isChar = true; o.look = l; o.x = x; o.y = y;
-        o.bw = Avatar.W; o.bh = Avatar.H;
+        o.sizeFromLook();
         o.phase = (float) (Math.random() * 6);
         return o;
     }
@@ -102,6 +119,8 @@ final class Obj {
                 o.slot = Integer.parseInt(e[2]);
                 o.pstate = Integer.parseInt(e[3]);
                 o.bites = Integer.parseInt(e[4]);
+                if (e.length > 5 && e[5].length() > 0) for (String it : e[5].split("\\+")) if (it.length() > 0) o.contents.add(it);
+                if (o.state == SLIDE) o.state = FREE;
             }
             return o;
         } catch (Exception e) {
