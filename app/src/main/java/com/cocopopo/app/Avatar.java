@@ -289,8 +289,8 @@ final class Avatar {
     /** Hair cap over the forehead. Variants change the bottom edge. */
     private static void fringe(Canvas c, int hair, int v) {
         hp.reset();
-        hp.moveTo(-92, -262);
-        hp.cubicTo(-104, -362, 104, -362, 92, -262);
+        hp.moveTo(-94, -262);
+        hp.cubicTo(-108, -382, 108, -382, 94, -262);
         switch (v) {
             case 0: // short, high
                 hp.quadTo(70, -296, 44, -308);

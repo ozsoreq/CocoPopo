@@ -228,6 +228,8 @@ public final class Game {
     void draw(Canvas canvas) {
         c = canvas;
         nb = 0;
+        Gfx.ol(0);
+        Gfx.shade = false;
         c.save();
         c.scale(scale, scale);
         switch (screen) {
@@ -259,6 +261,7 @@ public final class Game {
         c.save();
         c.scale(scale, scale);
         sel = null;
+        Gfx.ol(0);
         drawScene(false);
         c.restore();
     }
@@ -268,8 +271,10 @@ public final class Game {
 
     private void btn(int id, float cx, float cy, float r, int col, int icon) {
         float s = isDown(id) ? .9f : 1;
-        ci(c, cx, cy + 7 * s, r * s, dk(col, .28f));
+        ci(c, cx, cy + 8 * s, r * s, 0xFF2A1F2E);
+        Gfx.ol(4.5f);
         ci(c, cx, cy, r * s, col);
+        Gfx.ol(0);
         arc(c, cx, cy, r * s * .8f, r * s * .8f, 200, 70, r * .08f, al(0xFFFFFFFF, 120));
         Icons.draw(c, icon, cx, cy, r / 50f * s, 0xFFFFFFFF);
         reg(id, cx, cy, r * 2, r * 2);
@@ -332,12 +337,16 @@ public final class Game {
             float x = tileX(i), y = tileY(i) + (float) Math.sin(t * 2 + i) * 5;
             float s = isDown(B_LOC + i) ? .94f : 1;
             c.save(); c.translate(x, y); c.scale(s, s);
-            rr(c, -125, -108, 250, 250, 46, dk(lc.color, .32f));
+            rr(c, -125, -108, 250, 250, 46, 0xFF2A1F2E);
+            Gfx.ol(5.5f);
             rr(c, -125, -122, 250, 250, 46, lc.color);
+            Gfx.ol(0);
             rr(c, -112, -109, 224, 224, 36, lt(lc.color, .45f));
+            Gfx.ol(4);
             Scenes.drawIcon(c, lc.id, 0, -8, 1.05f, t);
             float lw = tw(lc.name, 34) + 50;
             rr(c, -lw / 2, 142, lw, 56, 28, 0xFFFFFFFF);
+            Gfx.ol(0);
             text(c, lc.name, 0, 181, 34, dk(lc.color, .5f), Paint.Align.CENTER);
             c.restore();
             reg(B_LOC + i, x, y + 40, 250, 340);
@@ -374,6 +383,8 @@ public final class Game {
             float k = 1 - o.lift * .22f;
             ov(c, o.x, o.y, o.bw * .36f * sc * k, 15 * sc * k, al(0xFF000000, (int) (46 - o.lift * 14)));
         }
+        Gfx.ol(o.isChar ? 6.5f : 5f);
+        Gfx.shade = true;
         float yoff = -o.lift * 36 * o.scale - o.hop;
         if (o.prop != null && o.prop.equals("balloon")) yoff -= 8 + (float) Math.sin(t * 1.6f + o.phase) * 8;
         c.save();
@@ -394,6 +405,8 @@ public final class Game {
             PropArt.draw(c, o.prop, t + o.phase);
         }
         c.restore();
+        Gfx.ol(0);
+        Gfx.shade = false;
         if (o.isChar && o.emoteT >= 0) {
             float a = Gfx.back(o.emoteT * 4);
             float fo = o.emoteT > 1.6f ? Math.max(0, (2 - o.emoteT) / .4f) : 1;
@@ -414,9 +427,12 @@ public final class Game {
         if (top < 150) top = Math.min(H - 340 - ph, sel.y + 24);
         float x0 = Gfx.clamp(sel.x - pw / 2, 20, W - 20 - pw);
         rr(c, x0, top + 6, pw, ph, 54, al(0xFF000000, 40));
+        Gfx.ol(5);
         rr(c, x0, top, pw, ph, 54, 0xFFFFFFFF);
         float tipX = Gfx.clamp(sel.x, x0 + 40, x0 + pw - 40);
-        poly(c, 0xFFFFFFFF, tipX - 16, top + ph - 4, tipX + 16, top + ph - 4, tipX, top + ph + 16);
+        poly(c, 0xFFFFFFFF, tipX - 16, top + ph - 6, tipX + 16, top + ph - 6, tipX, top + ph + 18);
+        Gfx.ol(0);
+        rect(c, tipX - 12, top + ph - 8, 24, 8, 0xFFFFFFFF);
         for (int i = 0; i < n; i++) btn(ids[i], x0 + 12 + 46 + i * 92, top + ph / 2, 38, cols[i], icons[i]);
     }
 
@@ -448,7 +464,9 @@ public final class Game {
         float top = trayTop();
         if (trayA > 0.01f) {
             rr(c, -40, top + 8, W + 80, TRAY_H + 60, 48, al(0xFF000000, 45));
+            Gfx.ol(5);
             rr(c, -40, top, W + 80, TRAY_H + 60, 48, 0xFFFFF7E6);
+            Gfx.ol(0);
             rr(c, -40, top, W + 80, 18, 8, 0xFFFFD98A);
             float chipY = top + 52;
             if (trayTab == 2) {
@@ -457,7 +475,9 @@ public final class Game {
                     boolean on = i == trayCat;
                     float w = tw(PropArt.CATS[i], 32) + 52;
                     float s = isDown(B_CHIP + i) ? .94f : 1;
+                    Gfx.ol(4);
                     rr(c, x, chipY - 28 * s, w, 56 * s, 28, on ? 0xFF6C7BFF : 0xFFFFFFFF);
+                    Gfx.ol(0);
                     text(c, PropArt.CATS[i], x + w / 2, chipY + 11, 32, on ? 0xFFFFFFFF : 0xFF6B6480, Paint.Align.CENTER);
                     reg(B_CHIP + i, x + w / 2, chipY, w, 64);
                     x += w + 14;
@@ -488,7 +508,10 @@ public final class Game {
         c.translate(x + CARD / 2, y + CARD / 2);
         c.scale(s, s);
         rr(c, -CARD / 2, -CARD / 2 + 8, CARD, CARD, 30, al(0xFF000000, 30));
+        Gfx.ol(4.5f);
         rr(c, -CARD / 2, -CARD / 2, CARD, CARD, 30, 0xFFFFFFFF);
+        Gfx.ol(0);
+        Gfx.shade = true;
         if (trayTab == 1) {
             if (i == 0) {
                 ci(c, 0, -10, 52, 0xFFFFE3EA);
@@ -500,7 +523,9 @@ public final class Game {
                 c.clipRect(-CARD / 2, -CARD / 2, CARD / 2, CARD / 2 - 34);
                 c.translate(0, 92);
                 c.scale(.5f, .5f);
+                Gfx.ol(7);
                 Avatar.draw(c, l, IDLE);
+                Gfx.ol(0);
                 c.restore();
                 String nm = i - 1 < lib.size() ? "Mine " + (i) : Look.PRESET_NAMES[i - 1 - lib.size()];
                 text(c, nm, 0, 82, 28, 0xFF6B6480, Paint.Align.CENTER);
@@ -509,10 +534,11 @@ public final class Game {
             PropArt.Def d = itemAt(i);
             if (d != null) {
                 float k = Math.min(150 / d.w, 124 / d.h);
-                c.save(); c.translate(0, 52); c.scale(k, k); PropArt.draw(c, d.id, t); c.restore();
+                c.save(); c.translate(0, 52); c.scale(k, k); Gfx.ol(4 / k); PropArt.draw(c, d.id, t); Gfx.ol(0); c.restore();
                 text(c, d.name, 0, 84, 26, 0xFF6B6480, Paint.Align.CENTER);
             }
         }
+        Gfx.shade = false;
         c.restore();
     }
 
@@ -735,8 +761,10 @@ public final class Game {
         for (int i = 0; i < 10; i++) ci(c, rndf(i) * W * .42f, 150 + rndf(i + 9) * 800, 8 + rndf(i + 4) * 10, al(0xFFFF8FA3, 90));
         // podium
         float px = W * .2f;
+        Gfx.ol(5);
         ov(c, px, 944, 230, 52, 0xFFE9CFA3);
         ov(c, px, 930, 230, 52, 0xFFFFE9C2);
+        Gfx.ol(0);
         ov(c, px, 930, 190, 40, 0xFFFFF6E2);
         // character
         float cs = 1.62f;
@@ -749,14 +777,20 @@ public final class Game {
         p.arm = edEmoteT >= 0 && edEmoteT < .8f ? 1 : 0;
         p.blink = edBlink > 0 ? (float) Math.sin(Math.PI * (1 - edBlink / .14f)) : 0;
         p.mood = edMood;
+        Gfx.ol(4.2f);
+        Gfx.shade = true;
         Avatar.draw(c, work, p);
+        Gfx.ol(0);
+        Gfx.shade = false;
         c.restore();
         if (edEmoteT >= 0) Icons.emote(c, edEmote, px, 930 - 380 * cs - 50, 1.1f * Gfx.back(edEmoteT * 4), t);
 
         // panel
         float x0 = W * .44f, x1 = W - 40, y0 = 230, y1 = H - 40;
         rr(c, x0, y0 + 8, x1 - x0, y1 - y0, 40, al(0xFF000000, 30));
+        Gfx.ol(5);
         rr(c, x0, y0, x1 - x0, y1 - y0, 40, 0xFFFFFFFF);
+        Gfx.ol(0);
         int[] tabIcons = {Icons.FACE, Icons.HAIR, Icons.SMILE, Icons.SHIRT, Icons.STAR};
         int[] tabCols = {0xFFFFA85C, 0xFF9B6CDC, 0xFF3CC5AF, 0xFF4FB3FF, 0xFFFF6F8F};
         float tw0 = (x1 - x0 - 130) / 5;
@@ -828,8 +862,9 @@ public final class Game {
         for (int i = 0; i < cols.length; i++) {
             float cx = x0 + 44 + (i % per) * step, cy = cursor + 44 + (i / per) * step;
             if (visibleY(cy - 44, 88)) {
-                ci(c, cx, cy + 4, 38, al(0xFF000000, 30));
+                                Gfx.ol(4);
                 ci(c, cx, cy, 38, cols[i]);
+                Gfx.ol(0);
                 if (cols[i] == 0xFFFFFFFF) cis(c, cx, cy, 37, 0xFFE0E0EC, 3);
                 if (i == sel) { cis(c, cx, cy, 46, 0xFF6C7BFF, 7); }
                 float s = 1;
@@ -850,7 +885,9 @@ public final class Game {
             c.save();
             c.translate(x + size / 2, y + size / 2);
             c.scale(s, s);
+            Gfx.ol(4);
             rr(c, -size / 2, -size / 2, size, size, 28, on ? 0xFFE5E8FF : 0xFFF5F2FA);
+            Gfx.ol(0);
             c.save();
             c.clipRect(-size / 2 + 4, -size / 2 + 4, size / 2 - 4, size / 2 - 4);
             Look l = work.copy();
@@ -864,7 +901,9 @@ public final class Game {
             }
             c.scale(k, k);
             c.translate(0, -cy);
+            Gfx.ol(5f / k);
             Avatar.draw(c, l, IDLE);
+            Gfx.ol(0);
             c.restore();
             if (on) rrs(c, -size / 2, -size / 2, size, size, 28, 0xFF6C7BFF, 6);
             c.restore();

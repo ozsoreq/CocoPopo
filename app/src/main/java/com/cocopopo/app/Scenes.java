@@ -72,6 +72,14 @@ final class Scenes {
 
     // ================================================================== backgrounds
     static void drawBg(Canvas c, String id, float W, float H, float t) {
+        Gfx.ol(5);
+        Gfx.shade = true;
+        drawBg2(c, id, W, H, t);
+        Gfx.ol(0);
+        Gfx.shade = false;
+    }
+
+    private static void drawBg2(Canvas c, String id, float W, float H, float t) {
         switch (id) {
             case "home": home(c, W, H, t); break;
             case "school": school(c, W, H, t); break;
@@ -90,8 +98,10 @@ final class Scenes {
     }
 
     static void cloud(Canvas c, float x, float y, float s, int col) {
+        float o = Gfx.olw; Gfx.ol(0);
         ci(c, x, y, 34 * s, col); ci(c, x + 38 * s, y - 14 * s, 42 * s, col); ci(c, x + 84 * s, y, 32 * s, col);
         rr(c, x - 34 * s, y, 150 * s, 34 * s, 17 * s, col);
+        Gfx.ol(o);
     }
 
     static void clouds(Canvas c, float W, float t, float y0, int n, int col) {
@@ -129,6 +139,11 @@ final class Scenes {
         rect(c, x, floorY - 22, w, 22, dk(wall, .10f));
         grad(c, x, floorY, w, bottom - floorY, floorCol, dk(floorCol, .14f));
         for (float py = floorY + 34; py < bottom; py += 42) rect(c, x, py, w, 3, al(0xFF000000, 22));
+        if (Gfx.olw > 0) {
+            ln(c, x, floorY, x + w, floorY, 4, Gfx.olc);
+            Gfx.stroke(Gfx.olc, Gfx.olw * 2);
+            c.drawRect(x, y, x + w, bottom, Gfx.P);
+        }
     }
 
     // ----------------------------------------------------------------- Home
@@ -317,6 +332,7 @@ final class Scenes {
     // ----------------------------------------------------------------- Park
     private static void park(Canvas c, float W, float H, float t) {
         grad(c, 0, 0, W, 620, 0xFF8ADBFF, 0xFFE3F8FF);
+        Gfx.ol(0);
         // sun
         float sx = W * .84f;
         for (int i = 0; i < 12; i++) {
@@ -331,9 +347,11 @@ final class Scenes {
         grad(c, 0, 600, W, H - 600, 0xFF84D974, 0xFF5FC25B);
         // path
         poly(c, 0xFFF3E1B5, W * .46f, 640, W * .54f, 640, W * .78f, H, W * .22f, H);
+        Gfx.ol(5);
         // fence
         for (float x = 10; x < W; x += 54) rr(c, x, 566, 30, 90, 10, 0xFFFFFFFF);
         rr(c, 0, 590, W, 14, 6, 0xFFF0EDE6); rr(c, 0, 628, W, 14, 6, 0xFFF0EDE6);
+        Gfx.ol(0);
         // pond
         float px = W * .86f;
         ov(c, px, 850, 250, 86, 0xFFBDEBFF);
@@ -341,6 +359,7 @@ final class Scenes {
         ov(c, px - 60, 840, 70, 18, al(0xFFFFFFFF, 90));
         ov(c, px + 70, 872, 34, 14, 0xFF4FBF6B); ov(c, px - 20, 880, 28, 11, 0xFF5BD07A);
         ci(c, px + 74, 866, 7, 0xFFFF8FC0);
+        Gfx.ol(5);
         for (int i = 0; i < 22; i++) {
             float fx = hash(i + 1) * W, fy = 700 + hash(i + 70) * 360;
             ci(c, fx, fy, 6, new int[]{0xFFFFFFFF, 0xFFFFE066, 0xFFFF8FC0}[i % 3]);
@@ -349,6 +368,7 @@ final class Scenes {
 
     // ----------------------------------------------------------------- Beach
     private static void beach(Canvas c, float W, float H, float t) {
+        Gfx.ol(0);
         grad(c, 0, 0, W, 470, 0xFF7FD8FF, 0xFFFFF4D6);
         for (int i = 0; i < 12; i++) {
             c.save(); c.translate(W * .8f, 150); c.rotate(i * 30 + t * 5);
@@ -358,6 +378,7 @@ final class Scenes {
         ci(c, W * .8f, 150, 68, 0xFFFFE066);
         clouds(c, W, t, 80, 4, 0xFFFFFFFF);
         grad(c, 0, 470, W, 270, 0xFF4DC9E6, 0xFF2AA3D4);
+        Gfx.ol(5);
         // boat
         float bx = W * .3f + (float) Math.sin(t * .6) * 24, by = 520 + (float) Math.sin(t * 1.4) * 4;
         poly(c, 0xFFFFFFFF, bx, by - 110, bx, by - 8, bx + 74, by - 8);
@@ -367,6 +388,7 @@ final class Scenes {
             float wy = 560 + i * 36, off = (t * 30 + i * 97) % 220;
             for (float x = -200 + off; x < W; x += 220) arc(c, x, wy, 50, 10, 200, 140, 5, al(0xFFFFFFFF, 140));
         }
+        Gfx.ol(0);
         // sand
         float wob = (float) Math.sin(t * 1.2) * 14;
         Path p = new Path();
@@ -390,9 +412,11 @@ final class Scenes {
 
     // ----------------------------------------------------------------- Funfair
     private static void fair(Canvas c, float W, float H, float t) {
+        Gfx.ol(0);
         grad(c, 0, 0, W, 330, 0xFF5E4AE3, 0xFFC864D8);
         grad(c, 0, 330, W, 440, 0xFFC864D8, 0xFFFFB27A);
         for (int i = 0; i < 36; i++) ci(c, hash(i) * W, hash(i + 50) * 300, 2 + hash(i + 7) * 3, al(0xFFFFFFFF, 120 + (int) (100 * Math.sin(t * 2 + i))));
+        Gfx.ol(5);
         // ferris wheel
         float cx = W * .5f, cy = 400, r = 270;
         ln(c, cx, cy, cx - 150, 900, 18, 0xFFE8EAF6); ln(c, cx, cy, cx + 150, 900, 18, 0xFFE8EAF6);
@@ -408,9 +432,11 @@ final class Scenes {
             rr(c, px - 22, py + 36, 44, 22, 8, al(0xFFFFFFFF, 190));
         }
         ci(c, cx, cy, 34, 0xFFFFD43B); ci(c, cx, cy, 16, 0xFFFF5C73);
+        Gfx.ol(0);
         // ground
         grad(c, 0, 760, W, H - 760, 0xFFFFE0B8, 0xFFFFC98C);
         rect(c, 0, 756, W, 12, 0xFFB86BD0);
+        Gfx.ol(5);
         // stalls
         for (int k = 0; k < 2; k++) {
             float sx = k == 0 ? W * .1f : W * .9f;
@@ -419,6 +445,7 @@ final class Scenes {
             poly(c, 0xFFFFD43B, sx - 150, 520, sx + 150, 520, sx, 470);
             rr(c, sx - 100, 640, 200, 30, 8, 0xFFFFFFFF);
         }
+        Gfx.ol(0);
         // string lights
         Path p = new Path();
         p.moveTo(0, 30); p.quadTo(W * .25f, 130, W * .5f, 40); p.quadTo(W * .75f, 130, W, 30);

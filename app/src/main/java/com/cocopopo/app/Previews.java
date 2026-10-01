@@ -20,7 +20,7 @@ public final class Previews {
                 Gfx.rr(c, cx - 125, cy - 215, 250, 240, 24, 0xFFFFFFFF);
                 float sc = Math.min(200 / d.w, 190 / d.h);
                 c.save(); c.translate(cx, cy); c.scale(sc, sc);
-                PropArt.draw(c, d.id, 3);
+                Gfx.ol(5); PropArt.draw(c, d.id, 3); Gfx.ol(0);
                 c.restore();
                 Gfx.text(c, d.name, cx, cy + 50, 28, 0xFF555566, android.graphics.Paint.Align.CENTER);
             }
@@ -31,7 +31,7 @@ public final class Previews {
             for (String d : Scenes.defaults(id)) {
                 String[] p = d.split(":");
                 float x = Float.parseFloat(p[1]) * w, y = Float.parseFloat(p[2]), sc = Float.parseFloat(p[3]);
-                c.save(); c.translate(x, y); c.scale(sc, sc);
+                Gfx.ol(p[0].startsWith("@") ? 6.5f : 5f); c.save(); c.translate(x, y); c.scale(sc, sc);
                 if (p[0].startsWith("@")) Avatar.draw(c, Look.PRESETS[Integer.parseInt(p[0].substring(1))], new Pose());
                 else PropArt.draw(c, p[0], 1.5f);
                 c.restore();
@@ -63,13 +63,13 @@ public final class Previews {
         if (name.equals("icon")) {
             Gfx.rr(c, 0, 0, w, h, 0, 0xFFFFB3C7);
             Gfx.ci(c, w / 2f, h / 2f + 40, 420, 0xFFFFD6E2);
-            Avatar.drawAt(c, Look.PRESETS[0], w / 2f, h * .97f, 1.25f, 0);
+            Gfx.ol(7); Avatar.drawAt(c, Look.PRESETS[0], w / 2f, h * .97f, 1.25f, 0); Gfx.ol(0);
             return;
         }
         if (name.equals("cast")) {
             for (int i = 0; i < Look.PRESETS.length; i++) {
                 int col = i % 5, row = i / 5;
-                Avatar.drawAt(c, Look.PRESETS[i], 200 + col * 380, 470 + row * 520, 1.15f, i);
+                Gfx.ol(5); Avatar.drawAt(c, Look.PRESETS[i], 200 + col * 380, 470 + row * 520, 1.15f, i); Gfx.ol(0);
             }
         }
     }

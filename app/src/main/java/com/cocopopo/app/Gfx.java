@@ -45,17 +45,58 @@ final class Gfx {
         return 0xFF000000 | ((int) (ar + (br - ar) * t) << 16) | ((int) (ag + (bg - ag) * t) << 8) | (int) (ab + (bb - ab) * t);
     }
 
+    /** Outline state: width in local units (0 = off). Applies to filled shapes that are big & opaque enough. */
+    static float olw = 0;
+    static int olc = 0xFF2A1F2E;
+    static boolean shade = true;
+
+    static void ol(float w) { olw = w; }
+
+    private static boolean wantOL(float minDim, int col) {
+        if (olw <= 0 || minDim < 22 || (col >>> 24) != 255) return false;
+        int lum = (int) (((col >> 16) & 255) * .3f + ((col >> 8) & 255) * .6f + (col & 255) * .1f);
+        return lum > 48;
+    }
+
+    private static void olStroke() {
+        P.setStyle(Paint.Style.STROKE);
+        P.setColor(olc);
+        P.setStrokeWidth(olw * 2);
+    }
+
+    /** Soft highlight/shadow so flat shapes read as slightly puffy, like Toca's shading. */
+    private static void shadeRR(Canvas c, float x, float y, float w, float h, float r, int col) {
+        if (!shade || olw <= 0 || Math.min(w, h) < 46) return;
+        float in = Math.min(w, h) * .09f;
+        // light crown
+        fill(lt(col, .16f));
+        R.set(x + in, y + in * .7f, x + w - in, y + h * .46f);
+        float rr = Math.min(r, Math.min(R.width(), R.height()) / 2);
+        c.drawRoundRect(R, rr, rr, P);
+        // soft shadow along the bottom
+        fill(al(dk(col, .3f), 70));
+        R.set(x + in * .6f, y + h - Math.min(h * .2f, 22), x + w - in * .6f, y + h - in * .5f);
+        c.drawRoundRect(R, rr, rr, P);
+    }
+
     static void fill(int col) { P.setStyle(Paint.Style.FILL); P.setColor(col); }
 
     static void stroke(int col, float w) { P.setStyle(Paint.Style.STROKE); P.setColor(col); P.setStrokeWidth(w); }
 
     /** Round rect by top-left corner. */
     static void rr(Canvas c, float x, float y, float w, float h, float r, int col) {
-        fill(col);
-        R.set(x, y, x + w, y + h);
         float m = Math.min(w, h) / 2;
         if (r > m) r = m;
+        boolean o = wantOL(Math.min(w, h), col);
+        if (o) {
+            olStroke();
+            R.set(x, y, x + w, y + h);
+            c.drawRoundRect(R, r, r, P);
+        }
+        fill(col);
+        R.set(x, y, x + w, y + h);
         c.drawRoundRect(R, r, r, P);
+        if (o) shadeRR(c, x, y, w, h, r, col);
     }
 
     static void rrs(Canvas c, float x, float y, float w, float h, float r, int col, float sw) {
@@ -66,14 +107,28 @@ final class Gfx {
         c.drawRoundRect(R, r, r, P);
     }
 
+    /** Outlined plain rectangle (walls, slabs). */
+    static void rectOL(Canvas c, float x, float y, float w, float h, int col) {
+        if (olw > 0) { olStroke(); c.drawRect(x, y, x + w, y + h, P); }
+        fill(col);
+        c.drawRect(x, y, x + w, y + h, P);
+    }
+
     static void rect(Canvas c, float x, float y, float w, float h, int col) {
         fill(col);
         c.drawRect(x, y, x + w, y + h, P);
     }
 
     static void ci(Canvas c, float x, float y, float r, int col) {
+        boolean o = wantOL(r * 2, col);
+        if (o) { olStroke(); c.drawCircle(x, y, r, P); }
         fill(col);
         c.drawCircle(x, y, r, P);
+        if (o && shade && r >= 26) {
+            fill(lt(col, .16f));
+            R.set(x - r * .62f, y - r * .8f, x + r * .15f, y - r * .22f);
+            c.drawOval(R, P);
+        }
     }
 
     static void cis(Canvas c, float x, float y, float r, int col, float sw) {
@@ -82,6 +137,8 @@ final class Gfx {
     }
 
     static void ov(Canvas c, float x, float y, float rx, float ry, int col) {
+        boolean o = wantOL(Math.min(rx, ry) * 2, col);
+        if (o) { olStroke(); R.set(x - rx, y - ry, x + rx, y + ry); c.drawOval(R, P); }
         fill(col);
         R.set(x - rx, y - ry, x + rx, y + ry);
         c.drawOval(R, P);
@@ -94,6 +151,10 @@ final class Gfx {
     }
 
     static void ln(Canvas c, float x1, float y1, float x2, float y2, float w, int col) {
+        if (olw > 0 && w >= 9 && (col >>> 24) == 255) {
+            stroke(olc, w + olw * 2);
+            c.drawLine(x1, y1, x2, y2, P);
+        }
         stroke(col, w);
         c.drawLine(x1, y1, x2, y2, P);
     }
@@ -105,6 +166,11 @@ final class Gfx {
     }
 
     static void pie(Canvas c, float cx, float cy, float rx, float ry, float start, float sweep, int col) {
+        if (wantOL(Math.min(rx, ry) * 1.2f, col)) {
+            olStroke();
+            R.set(cx - rx, cy - ry, cx + rx, cy + ry);
+            c.drawArc(R, start, sweep, true, P);
+        }
         fill(col);
         R.set(cx - rx, cy - ry, cx + rx, cy + ry);
         c.drawArc(R, start, sweep, true, P);
@@ -113,13 +179,19 @@ final class Gfx {
     static void poly(Canvas c, int col, float... p) {
         PA.reset();
         PA.moveTo(p[0], p[1]);
-        for (int i = 2; i + 1 < p.length; i += 2) PA.lineTo(p[i], p[i + 1]);
+        float x0 = p[0], x1 = p[0], y0 = p[1], y1 = p[1];
+        for (int i = 2; i + 1 < p.length; i += 2) {
+            PA.lineTo(p[i], p[i + 1]);
+            x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); y0 = Math.min(y0, p[i + 1]); y1 = Math.max(y1, p[i + 1]);
+        }
         PA.close();
+        if (wantOL(Math.max(x1 - x0, y1 - y0) * .7f, col)) { olStroke(); c.drawPath(PA, P); }
         fill(col);
         c.drawPath(PA, P);
     }
 
     static void path(Canvas c, Path p, int col) {
+        if (wantOL(40, col)) { olStroke(); c.drawPath(p, P); }
         fill(col);
         c.drawPath(p, P);
     }

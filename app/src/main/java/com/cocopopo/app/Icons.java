@@ -144,8 +144,10 @@ final class Icons {
         c.save();
         c.translate(x, y);
         c.scale(s, s);
+        Gfx.ol(4);
         poly(c, 0xFFFFFFFF, -14, 20, 14, 20, 0, 42);
         rr(c, -62, -48, 124, 82, 36, 0xFFFFFFFF);
+        Gfx.ol(0);
         switch (kind % 7) {
             case 0: // heart
                 p.reset();
