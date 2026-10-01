@@ -24,6 +24,11 @@ func setup(icon_name: String, col: Color, r := 52.0) -> RoundButton:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	return self
 
+func set_icon(icon_name: String) -> void:
+	icon = icon_name
+	_icon_tex = Art.tex(icon_name)
+	queue_redraw()
+
 func _process(delta: float) -> void:
 	var target := 0.88 if _down else 1.0
 	_scale = lerpf(_scale, target, minf(1.0, delta * 20))

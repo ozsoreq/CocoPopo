@@ -1,7 +1,7 @@
 class_name Rules
 extends RefCounted
 ## The rules of the dollhouse world (ported from the Java version's Life.java).
-const CATS := ["Home", "Food", "Toys", "Outdoors", "Stuff"]
+const CATS := ["Home", "Food", "Toys", "Outdoors", "Stuff", "Pets"]
 ## [category, id, name, width, height]
 const PROPS := [
 	[0, "bed", "Bed", 370, 240],
@@ -67,6 +67,24 @@ const PROPS := [
 	[4, "cart", "Cart", 200, 190],
 	[4, "wheelchair", "Wheelchair", 170, 210],
 	[4, "clock", "Clock", 120, 120],
+	[1, "egg", "Egg", 60, 70],
+	[1, "bread", "Bread", 110, 80],
+	[1, "banana", "Banana", 110, 70],
+	[1, "strawberry", "Strawberry", 70, 80],
+	[1, "tomato", "Tomato", 80, 90],
+	[1, "corn", "Corn", 80, 130],
+	[1, "friedegg", "Fried egg", 120, 55],
+	[1, "toast", "Toast", 100, 105],
+	[1, "soup", "Soup", 130, 95],
+	[1, "smoothie", "Smoothie", 70, 150],
+	[1, "milkshake", "Milkshake", 80, 170],
+	[0, "blender", "Blender", 100, 200],
+	[5, "cat", "Cat", 140, 150],
+	[5, "dog", "Dog", 150, 150],
+	[5, "bunny", "Bunny", 120, 170],
+	[5, "petbed", "Pet bed", 200, 70],
+	[4, "door", "Door", 180, 285],
+	[4, "busstop", "Bus stop", 170, 315],
 ]
 ## [id, name, colour]
 const PLACES := [
@@ -81,14 +99,14 @@ const PLACES := [
 ]
 ## starting contents: "prop:xFraction:y:scale" or "@presetIndex:xFraction:y:scale"
 const DEFAULTS := {
-	"home": ["rug:.17:520:1", "bed:.12:530:1", "dresser:.33:535:.95", "lamp:.41:535:.9", "plant:.02:545:.8", "tub:.66:540:.95", "toilet:.88:545:.85", "frame:.28:360:.9", "rug:.2:975:1", "sofa:.18:965:1", "tv:.38:960:.95", "plant:.05:970:.9", "fridge:.62:965:1", "stove:.75:962:.95", "table:.88:970:.85", "chair:.82:975:.8", "@0:.42:525:1", "@1:.3:968:1", "duck:.66:500:1"],
-	"school": ["desk:.22:860:1", "desk:.42:860:1", "desk:.62:860:1", "desk:.22:1010:1", "desk:.42:1010:1", "desk:.62:1010:1", "shelf:.93:800:.9", "globe:.82:760:.8", "clock:.6:200:.8", "backpack:.08:830:.8", "@6:.76:800:1", "@3:.52:945:1"],
-	"hospital": ["hbed:.2:830:1", "hbed:.64:830:1", "ivstand:.36:820:1", "medkit:.88:800:.9", "plant:.94:820:.9", "wheelchair:.8:1000:1", "@5:.5:860:1", "@4:.14:850:1"],
-	"market": ["cart:.2:950:1", "crate:.45:800:1", "crate:.6:800:1", "register:.86:790:1", "fridge:.07:770:.9", "apple:.15:700:1", "juice:.36:780:.8", "@7:.74:810:1", "@8:.34:930:1"],
-	"cafe": ["table:.2:900:.85", "chair:.1:910:.75", "chair:.3:910:.75", "table:.5:1000:.85", "plant:.04:760:.9", "coffee:.16:830:1", "cake:.56:900:1", "cupcake:.64:760:.9", "register:.8:760:.95", "@9:.36:975:1"],
-	"park": ["tree:.08:700:1", "tree:.92:690:1.1", "swing:.3:760:1", "slide:.64:760:1", "bench:.5:960:1", "flower:.2:900:1", "flower:.24:915:.8", "bush:.78:930:1", "ball:.42:1020:.8", "rock:.9:950:.8", "car:.86:1050:1.5", "mushroom:.58:1010:1", "@2:.7:930:1"],
-	"beach": ["umbrella:.2:880:1", "palm:.06:740:1", "palm:.93:760:1", "sandcastle:.5:960:1", "surfboard:.78:900:.9", "rug:.22:990:.8", "ball:.65:1010:.8", "icecream:.4:870:.9", "@10:.34:960:1"],
-	"fair": ["balloon:.1:900:1", "balloon:.14:910:.9", "balloon:.9:900:1", "popcorn:.3:900:1", "cotton:.7:900:1", "teddy:.55:900:1", "gift:.82:1010:.9", "@11:.35:960:1"],
+	"home": ["rug:.17:520:1", "bed:.12:530:1", "dresser:.33:535:.95", "lamp:.41:535:.9", "plant:.02:545:.8", "tub:.66:540:.95", "toilet:.88:545:.85", "frame:.28:360:.9", "rug:.2:975:1", "sofa:.18:965:1", "tv:.38:960:.95", "plant:.05:970:.9", "fridge:.62:965:1", "stove:.75:962:.95", "table:.84:970:.85", "chair:.78:975:.8", "@0:.42:525:1", "@1:.3:968:1", "duck:.66:500:1", "cat:.47:540:1", "petbed:.245:548:.9", "blender:.84:836:.85", "door:.955:968:.85"],
+	"school": ["desk:.22:860:1", "desk:.42:860:1", "desk:.62:860:1", "desk:.22:1010:1", "desk:.42:1010:1", "desk:.62:1010:1", "shelf:.93:800:.9", "globe:.82:760:.8", "clock:.6:200:.8", "backpack:.08:830:.8", "@6:.76:800:1", "@3:.52:945:1", "bunny:.86:880:1", "door:.97:690:.95"],
+	"hospital": ["hbed:.2:830:1", "hbed:.64:830:1", "ivstand:.36:820:1", "medkit:.88:800:.9", "plant:.94:820:.9", "wheelchair:.8:1000:1", "@5:.5:860:1", "@4:.14:850:1", "door:.97:715:.95"],
+	"market": ["cart:.2:950:1", "crate:.45:800:1", "crate:.6:800:1", "register:.86:790:1", "fridge:.07:770:.9", "apple:.15:700:1", "juice:.36:780:.8", "@7:.74:810:1", "@8:.34:930:1", "door:.97:735:.95"],
+	"cafe": ["table:.2:900:.85", "chair:.1:910:.75", "chair:.3:910:.75", "table:.5:1000:.85", "plant:.04:760:.9", "coffee:.16:830:1", "cake:.56:900:1", "cupcake:.64:760:.9", "register:.8:760:.95", "@9:.36:975:1", "blender:.7:440:.85", "door:.22:712:.95"],
+	"park": ["tree:.08:700:1", "tree:.92:690:1.1", "swing:.3:760:1", "slide:.64:760:1", "bench:.5:960:1", "flower:.2:900:1", "flower:.24:915:.8", "bush:.78:930:1", "ball:.42:1020:.8", "rock:.9:950:.8", "car:.86:1050:1.5", "mushroom:.58:1010:1", "@2:.7:930:1", "dog:.36:980:1", "busstop:.95:700:1"],
+	"beach": ["umbrella:.2:880:1", "palm:.06:740:1", "palm:.93:760:1", "sandcastle:.5:960:1", "surfboard:.78:900:.9", "rug:.22:990:.8", "ball:.65:1010:.8", "icecream:.4:870:.9", "@10:.34:960:1", "busstop:.9:830:1"],
+	"fair": ["balloon:.1:900:1", "balloon:.14:910:.9", "balloon:.9:900:1", "popcorn:.3:900:1", "cotton:.7:900:1", "teddy:.55:900:1", "gift:.82:1010:.9", "@11:.35:960:1", "busstop:.95:820:1"],
 }
 
 static func prop_def(id: String) -> Array:
@@ -147,27 +165,79 @@ static func wall(id: String) -> bool: return id == "frame" or id == "clock"
 static func floats(id: String) -> bool: return id == "balloon"
 
 static func food(id: String) -> bool:
-	return id in ["cake", "pizza", "burger", "icecream", "donut", "apple", "juice", "cupcake", "coffee", "popcorn", "cotton", "coconut"]
+	return id in ["cake", "pizza", "burger", "icecream", "donut", "apple", "juice", "cupcake", "coffee", "popcorn", "cotton", "coconut",
+		"bread", "banana", "strawberry", "tomato", "friedegg", "toast", "soup", "smoothie", "milkshake"]
 
-static func drink(id: String) -> bool: return id == "juice" or id == "coffee"
+static func drink(id: String) -> bool: return id in ["juice", "coffee", "smoothie", "milkshake"]
+
+## What a kitchen device makes from an ingredient ("" if nothing).
+static func recipe(device: String, ingredient: String) -> String:
+	match device:
+		"stove":
+			match ingredient:
+				"egg": return "friedegg"
+				"bread": return "toast"
+				"tomato": return "soup"
+				"corn": return "popcorn"
+		"blender":
+			match ingredient:
+				"banana": return "smoothie"
+				"strawberry": return "milkshake"
+				"apple": return "juice"
+	return ""
+
+static func pet(id: String) -> bool: return id in ["cat", "dog", "bunny"]
+
+static func pet_sound(id: String) -> String:
+	match id:
+		"cat": return "meow"
+		"dog": return "woof"
+	return "squeak"
+
+## Doors and bus stops take characters to other places.
+static func travel(id: String) -> bool: return id == "door" or id == "busstop"
+
+## Props that land on tables and counters instead of the floor.
+static func rests_on_surfaces(id: String) -> bool: return tossable(id) or id == "blender"
+
+## Lit things and where their light comes from (offset, colour, size) when the lights are on.
+static func light_of(p: Thing) -> Array:
+	match p.id:
+		"lamp": return [Vector2(0, -250), Color(1, 0.86, 0.55), 2.6] if p.pstate == 1 else []
+		"tv": return [Vector2(0, -150), Color(0.6, 0.8, 1), 2.0] if p.pstate != 1 else []
+		"fridge": return [Vector2(-20, -200), Color(0.8, 0.95, 1), 2.0] if p.pstate == 1 else []
+		"stove": return [Vector2(0, -110), Color(1, 0.6, 0.3), 1.6] if p.pstate == 1 else []
+		"camera", "rocket": return []
+	return []
+
+## Things added to an existing save if the place has none yet (new features reach old saves).
+const ENSURE := ["door", "busstop", "cat", "dog", "bunny", "petbed", "blender"]
+
+## Starting contents of containers in a place.
+static func starter(loc: String, id: String) -> Array:
+	match loc + ":" + id:
+		"home:fridge": return ["egg", "bread", "banana", "tomato", "corn"]
+		"market:crate": return ["banana", "tomato", "corn", "egg", "strawberry", "bread"]
+		"cafe:fridge", "market:fridge": return ["strawberry", "banana", "egg"]
+	return []
 
 static func holdable(id: String) -> bool:
-	return food(id) or id in ["ball", "teddy", "balloon", "blocks", "guitar", "duck", "flower", "mushroom", "backpack", "books",
+	return food(id) or pet(id) or id in ["egg", "corn", "ball", "teddy", "balloon", "blocks", "guitar", "duck", "flower", "mushroom", "backpack", "books",
 		"globe", "gift", "trophy", "camera", "medkit", "plant", "surfboard", "crate", "rocket"]
 
 ## 0 one hand, 1 both hands in front, 2 overhead
 static func hold_type(id: String) -> int:
-	if id in ["teddy", "gift", "crate", "books", "globe", "cake", "blocks", "plant", "medkit", "pizza", "backpack", "rocket"]:
+	if pet(id) or id in ["teddy", "gift", "crate", "books", "globe", "cake", "blocks", "plant", "medkit", "pizza", "backpack", "rocket", "soup", "bread"]:
 		return 1
 	if id in ["balloon", "trophy"]:
 		return 2
 	return 0
 
-static func tossable(id: String) -> bool: return holdable(id) and not floats(id)
+static func tossable(id: String) -> bool: return holdable(id) and not floats(id) and not pet(id)
 
 static func states(id: String) -> int:
 	match id:
-		"lamp", "fridge", "stove", "gift", "umbrella": return 2
+		"lamp", "fridge", "stove", "gift", "umbrella", "blender", "door", "cat", "dog", "bunny": return 2
 		"tv": return 4
 	return 0
 

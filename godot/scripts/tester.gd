@@ -14,6 +14,7 @@ func run(m: Node, mode: String) -> void:
 		"shots": await shots()
 		"smoke": await smoke()
 		"editor": await editor_test()
+		"depth": await depth_test()
 	get_tree().quit()
 
 func frames(n: int) -> void:
@@ -64,6 +65,13 @@ func drag(a: Vector2, b: Vector2) -> void:
 
 func bodyp(c: Thing) -> Vector2:
 	return Vector2(c.x, c.y + c.dyo - c.bh * c.sc * 0.45)
+
+## Waits (in frames) until cond() is true or max frames pass.
+func until(cond: Callable, max_frames: int) -> void:
+	for i in max_frames:
+		if cond.call():
+			return
+		await get_tree().process_frame
 
 func check(name: String, ok: bool) -> void:
 	print(("PASS " if ok else "FAIL ") + name)
@@ -281,3 +289,85 @@ func editor_test() -> void:
 	main.editor.finished.emit(null, false)
 	await frames(40)
 	check("cancel closes editor", main.editor == null and Save.data["lib"].size() == 2)
+
+## Cooking, pets, day & night, doors.
+func depth_test() -> void:
+	Save.data.erase("home"); Save.data.erase("park"); Save.data["night"] = false
+	main.go_place("home")
+	await frames(40)
+	var l := loc()
+	for th in l.things.duplicate():
+		l.remove_thing(th)
+	await frames(2)
+	var cx := l.WB / 2
+	var stove := l.make_prop("stove", cx + 300, 965)
+	var blender := l.make_prop("blender", cx + 700, 965)
+	var egg := l.make_prop("egg", cx - 100, 965)
+	var banana := l.make_prop("banana", cx - 250, 965)
+	var cat := l.make_prop("cat", cx - 600, 965)
+	var bed := l.make_prop("petbed", cx - 900, 965)
+	var apple := l.make_prop("apple", cx - 400, 965)
+	var lamp := l.make_prop("lamp", cx + 500, 965)
+	var door := l.make_prop("door", cx + 950, 965)
+	var kid := l.make_char(Look.preset(1), cx, 970, "p1")
+	for th in l.things:
+		th.pop = 1
+		if th.is_char: (th as Character).idle_t = 9999
+		if th is Prop: (th as Prop).pet_t = 9999
+	await frames(5)
+	# cooking
+	await drag(Vector2(egg.x, egg.y - 30), Vector2(stove.x, stove.y - 150))
+	await frames(5)
+	check("egg goes on the stove", not is_instance_valid(egg) and stove.cook_t > 0 and stove.pstate == 1)
+	await until(func(): return stove.cook_t <= 0, 600)
+	await frames(30)
+	var fried := false
+	for th in l.things:
+		if th.id == "friedegg": fried = true
+	check("stove makes a fried egg", fried and stove.cook_t == 0 and stove.pstate == 0)
+	await drag(Vector2(banana.x, banana.y - 30), Vector2(blender.x, blender.y - 140))
+	await frames(3)
+	await until(func(): return blender.cook_t <= 0, 600)
+	await frames(30)
+	var smooth := false
+	for th in l.things:
+		if th.id == "smoothie": smooth = true
+	check("blender makes a smoothie", smooth)
+	await shot("t_cooking")
+	# pets
+	await drag(Vector2(apple.x, apple.y - 30), Vector2(cat.x + 30, cat.y - 70))
+	await frames(5)
+	check("feed the cat", not is_instance_valid(apple))
+	await drag(Vector2(cat.x + 20, cat.y - 60), Vector2(bed.x, bed.y - 40))
+	await frames(10)
+	check("cat naps in its bed", cat.state == Thing.ON_TOP and cat.link == bed and cat.pstate == 1)
+	await tap(Vector2(cat.x + 20, cat.y - 30))
+	await frames(5)
+	check("tap wakes the cat", cat.pstate == 0 and cat.state == Thing.FREE)
+	cat.pet_t = 0.1
+	await get_tree().create_timer(1.0).timeout
+	check("cat wanders on its own", cat.walking or absf(cat.x - (cx - 600)) > 5 or cat.hop_v != 0)
+	# day & night
+	lamp.pstate = 1; lamp.refresh_art()
+	l.ui.btn_night.pressed.emit()
+	await get_tree().create_timer(1.5).timeout
+	check("night falls", l.night and l.cmod.color.r < 0.6 and Save.data.get("night") == true)
+	check("lamp glows at night", lamp.light != null and lamp.light.visible)
+	await shot("t_night")
+	l.ui.btn_night.pressed.emit()
+	await get_tree().create_timer(1.5).timeout
+	check("morning again", not l.night and l.cmod.color.r > 0.95 and not lamp.light.visible)
+	# travel through the door
+	await drag(bodyp(kid), Vector2(door.x, door.y - 140))
+	await frames(10)
+	check("door asks where to", main.picker != null and door.pstate == 1)
+	await shot("t_travel")
+	main.picker.chosen.emit("park")
+	await frames(90)
+	var pl := loc()
+	check("kid arrives in the park", pl.loc == "park" and pl.char_by_cid("p1") != null)
+	var left := true
+	for r in Save.data.get("home", []):
+		if r.get("cid", "") == "p1": left = false
+	check("kid left home (no twin)", left)
+	await shot("t_arrived")

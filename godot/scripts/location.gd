@@ -5,12 +5,15 @@ extends Node2D
 signal go_map
 signal edit_char(c: Character)
 signal new_char
+signal travel(c: Character)
 
 const WB := 2560.0
 const H := 1080.0
-enum { K_NONE, K_SIT, K_LIE, K_GIVE, K_IN, K_BATHE, K_SLIDE, K_HUG, K_SHOULDER, K_BOUNCE, K_PICK, K_USE }
+enum { K_NONE, K_SIT, K_LIE, K_GIVE, K_IN, K_BATHE, K_SLIDE, K_HUG, K_SHOULDER, K_BOUNCE, K_PICK, K_USE, K_COOK, K_FEED, K_NAP, K_TRAVEL }
 const BADGE := {K_SIT: [24, "4fb3ff"], K_LIE: [25, "8e7bff"], K_GIVE: [26, "ff9a3d"], K_IN: [27, "58b368"],
-	K_BATHE: [28, "3cc5df"], K_SLIDE: [29, "ff6f8f"], K_HUG: [22, "ff5c8a"], K_SHOULDER: [30, "ffb02e"], K_BOUNCE: [30, "b67cff"]}
+	K_BATHE: [28, "3cc5df"], K_SLIDE: [29, "ff6f8f"], K_HUG: [22, "ff5c8a"], K_SHOULDER: [30, "ffb02e"], K_BOUNCE: [30, "b67cff"],
+	K_COOK: [20, "ff9a3d"], K_FEED: [22, "ff5c8a"], K_NAP: [25, "8e7bff"], K_TRAVEL: [33, "3cc57b"]}
+const NIGHT := Color(0.42, 0.45, 0.72)
 
 var loc := "home"
 var t := 0.0
@@ -46,6 +49,10 @@ var feet := Vector2(-1e9, 0)
 
 var shimmer_t := 3.0
 var ui: LocationUI
+var backdrop: Backdrop
+var night := false
+var cmod: CanvasModulate
+var arriving := {}        # a character coming in through the door: {cid, look, held}
 
 func setup(place: String) -> void:
 	loc = place
@@ -53,9 +60,11 @@ func setup(place: String) -> void:
 func _ready() -> void:
 	world = Node2D.new()
 	add_child(world)
-	var bg := Backdrop.new().setup(loc)
-	bg.z_index = -4000
-	world.add_child(bg)
+	backdrop = Backdrop.new().setup(loc)
+	backdrop.z_index = -4000
+	world.add_child(backdrop)
+	cmod = CanvasModulate.new()
+	add_child(cmod)
 	layer = Node2D.new()
 	world.add_child(layer)
 	fx = Node2D.new()
@@ -72,6 +81,10 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	load_state()
+	set_night(bool(Save.data.get("night", false)), false)
+	if not arriving.is_empty():
+		_arrive(arriving)
+		arriving = {}
 
 func _layout() -> void:
 	var vs := get_viewport().get_visible_rect().size
@@ -159,6 +172,9 @@ func _process(delta: float) -> void:
 		if th is Prop:
 			_update_overlays(th as Prop)
 	_shimmer(dt)
+	for th in things:
+		if th is Prop:
+			(th as Prop).set_light(Rules.light_of(th), night)
 	badge.visible = tg != null and drag != null and moved
 	if badge.visible:
 		var k: Array = BADGE.get(tg_kind, [16, "ffffff"])
@@ -296,16 +312,25 @@ func update_thing(o: Thing, dt: float, dragging: bool) -> void:
 		var p := o as Prop
 		if p.state != Thing.HELD:
 			p.ds = 1.0
+		var is_pet := Rules.pet(p.id)
 		if p.walking:
 			var dv := Vector2(p.tx - p.x, p.ty - p.y)
 			if dv.length() < 6:
 				p.walking = false
 			else:
-				var step := minf(dv.length(), 420 * dt)
+				var step := minf(dv.length(), p.speed * dt)
 				p.x += dv.normalized().x * step; p.y += dv.normalized().y * step
 				if absf(dv.x) > 4:
-					p.flip = dv.x < 0 if p.id == "car" else dv.x > 0
-				p.hop = absf(sin(t * 18)) * 3
+					p.flip = dv.x < 0 if (p.id == "car" or is_pet) else dv.x > 0
+				p.hop = absf(sin(t * 14)) * 12 if is_pet else absf(sin(t * 18)) * 3
+		if is_pet and p.state == Thing.FREE and not p.falling:
+			update_pet(p, dt)
+		if p.cook_t > 0:
+			_cook_tick(p, dt)
+		if p.close_t > 0:
+			p.close_t -= dt
+			if p.close_t <= 0 and p.id == "door":
+				p.pstate = 0; p.refresh_art()
 
 	if o.falling:
 		o.vy += 3200 * dt
@@ -336,7 +361,7 @@ func update_thing(o: Thing, dt: float, dragging: bool) -> void:
 
 func rest_for(o: Thing, out_link: Array) -> float:
 	var rest := Rules.floor_below(loc, o.peak_y)
-	if o.is_char or not Rules.tossable(o.id):
+	if o.is_char or not Rules.rests_on_surfaces(o.id):
 		return rest
 	for s in things:
 		if s == o or s.is_char:
@@ -465,7 +490,7 @@ func pick_idle(c: Character) -> void:
 	var r := randi() % 20
 	match c.state:
 		Thing.LIE:
-			if r < 2: stand_up(c, 1)
+			if r < 2 and not night: stand_up(c, 1)
 			return
 		Thing.BATHE:
 			if r < 6:
@@ -491,6 +516,7 @@ func pick_idle(c: Character) -> void:
 			return
 	if c.held != null and Rules.food(c.held.id) and r < 8: eat(c); return
 	if c.held != null and not Rules.food(c.held.id) and r < 3: put_down(c); return
+	if night and r < 4 and c.emote_t < 0: c.do_emote(5); return
 	if r < 7 and auto_use(c): return
 	if r < 12:
 		var f := Rules.floors(loc)
@@ -520,6 +546,8 @@ func auto_use(c: Character) -> bool:
 		elif c.held == null and Rules.holdable(q.id) and not Rules.floats(q.id): score = 3.0 if Rules.food(q.id) else 1.5
 		elif Rules.is_tub(q.id) and occupant(q) == null: score = 1
 		elif Rules.is_slide(q.id): score = 1.2
+		elif Rules.pet(q.id) and q.state == Thing.FREE: score = 1.6
+		if night and Rules.bed(q.id) != 0 and occupant(q) == null: score = 5.0
 		if score <= 0:
 			continue
 		score *= 0.5 + randf()
@@ -611,6 +639,8 @@ func resolve(d: Thing, f: Vector2) -> void:
 				_consider(q, K_SLIDE, 0, Vector2(q.x - 100 * q.sc * (-1.0 if q.flip else 1.0), q.y - 300 * q.sc), 140 * qs, 140 * qs, pts)
 			if Rules.bouncy(q.id) and q.state == Thing.FREE:
 				_consider(q, K_BOUNCE, 0, Vector2(q.x, q.y - 80 * q.sc), 110 * qs, 110 * qs, [f, Vector2(d.x, d.y)])
+			if Rules.travel(q.id):
+				_consider(q, K_TRAVEL, 0, Vector2(q.x, q.y - q.bh * q.sc * 0.5), q.bw * q.sc * 0.6, q.bh * q.sc * 0.55, pts)
 		var _unused := dc
 	else:
 		var body2 := Vector2(d.x, d.y - d.bh * d.sc * 0.5)
@@ -622,6 +652,12 @@ func resolve(d: Thing, f: Vector2) -> void:
 				if q.held == null and Rules.holdable(d.id) and not q.state in [Thing.LIE, Thing.HELD, Thing.SLIDE]:
 					_consider(q, K_GIVE, 0, Vector2(q.x, q.y + q.dyo - q.bh * q.sc * 0.45), 130 * qs2, q.bh * q.sc * 0.5, [f, body2])
 				continue
+			if Rules.recipe(q.id, d.id) != "" and (q as Prop).cook_t <= 0:
+				_consider(q, K_COOK, 0, Vector2(q.x, q.y - q.bh * q.sc * 0.6), q.bw * q.sc * 0.6, maxf(100, q.bh * q.sc * 0.5), [f, body2])
+			if Rules.pet(q.id) and Rules.food(d.id) and q.state != Thing.HELD:
+				_consider(q, K_FEED, 0, Vector2(q.x, q.y - q.bh * q.sc * 0.5), 110 * qs2, 110 * qs2, [f, body2])
+			if Rules.pet(d.id) and q.id == "petbed" and occupant_pet(q) == null:
+				_consider(q, K_NAP, 0, Vector2(q.x, q.y - 40 * q.sc), q.bw * q.sc * 0.6, 110 * qs2, [f, body2])
 			var cap := Rules.capacity(q.id)
 			if cap > 0 and q.contents.size() < cap and Rules.holdable(d.id) and Rules.capacity(d.id) == 0 and not (q.id == "gift" and q.pstate == 0):
 				var zy := q.y - 120 * q.sc if Rules.is_tub(q.id) else q.y - q.bh * q.sc * 0.55
@@ -771,7 +807,156 @@ func perform(o: Thing, q: Thing, kind: int, slot: int) -> bool:
 		K_USE:
 			tap_thing(q)
 			return true
+		K_COOK:
+			var dev := q as Prop
+			dev.cook_out = Rules.recipe(q.id, o.id)
+			dev.cook_t = 2.6
+			dev.pstate = 1; dev.wiggle = 0.6; dev.refresh_art()
+			remove_thing(o)
+			if sel == o: sel = q
+			react(q.x, 700, 2, 1.2)
+			Sfx.play("blend" if q.id == "blender" else "sizzle")
+			return true
+		K_FEED:
+			remove_thing(o)
+			if sel == o: sel = q
+			q.hop_v = 600; q.wiggle = 0.6
+			if q.pstate == 1:
+				q.pstate = 0; (q as Prop).refresh_art()
+			fx.burst(Vector2(q.x, q.y - q.bh * q.sc * 0.7), 6, Color("ff6f8f"), 2, 260)
+			Sfx.play("bite")
+			Sfx.play(Rules.pet_sound(q.id))
+			return true
+		K_NAP:
+			o.state = Thing.ON_TOP; o.link = q; o.off_x = 0
+			o.pstate = 1; (o as Prop).refresh_art(); (o as Prop).walking = false
+			fx.burst(Vector2(q.x, q.y - 80 * q.sc), 4, Color("c8beff"), 2, 200)
+			Sfx.play("yawn")
+			return true
+		K_TRAVEL:
+			q.pstate = 1; (q as Prop).refresh_art(); q.wiggle = 0.5
+			(q as Prop).close_t = 4.0
+			o.x = q.x; o.y = Rules.floor_below(loc, q.y - 4)
+			Sfx.play("whoosh")
+			travel.emit(o as Character)
+			return true
 	return false
+
+func occupant_pet(bed: Thing) -> Thing:
+	for q in things:
+		if Rules.pet(q.id) and q.link == bed and q.state == Thing.ON_TOP:
+			return q
+	return null
+
+## Stove / blender at work: steam or whirring, then the dish pops out.
+func _cook_tick(p: Prop, dt: float) -> void:
+	p.cook_t -= dt
+	if randf() < dt * 6:
+		var top := Vector2(p.x + (randf() - 0.5) * 40 * p.sc, p.y - p.bh * p.sc * (0.95 if p.id == "blender" else 1.15))
+		fx.burst(top, 1, Color(1, 1, 1, 0.8) if p.id == "stove" else Color("ffe9a0"), 3, 120)
+	if p.id == "blender":
+		p.wiggle = maxf(p.wiggle, 0.25)
+	if p.cook_t <= 0:
+		p.cook_t = 0
+		p.pstate = 0; p.refresh_art()
+		var out := p.cook_out
+		p.cook_out = ""
+		if out != "":
+			spawn_from(out, p.x, p.y - p.bh * p.sc * 0.8, 1.0)
+			fx.burst(Vector2(p.x, p.y - p.bh * p.sc * 0.9), 12, Color("ffd43b"), 2, 420)
+			react(p.x, 800, 4, 1.4)
+			Sfx.play("tada")
+
+## Pets: follow a friend, wander, sit, and curl up when it's night.
+func update_pet(p: Prop, dt: float) -> void:
+	if p.pend != null and not p.walking:
+		var bed := p.pend
+		p.pend = null
+		if things.has(bed) and occupant_pet(bed) == null:
+			perform(p, bed, K_NAP, 0)
+			return
+	if p.pstate == 1:
+		if not night and randf() < dt * 0.08:
+			p.pstate = 0; p.refresh_art(); p.hop_v = 400
+		return
+	p.pet_t -= dt
+	if p.pet_t > 0 or p.walking:
+		return
+	p.pet_t = 2.5 + randf() * 4.0
+	var f := Rules.floors(loc)
+	var bi := Rules.band(loc, p.y)
+	if night:
+		for q in things:
+			if q.id == "petbed" and Rules.band(loc, q.y) == bi and occupant_pet(q) == null:
+				p.tx = q.x; p.ty = q.y; p.walking = true; p.pend = q
+				return
+		p.pstate = 1; p.refresh_art()
+		return
+	var friend: Thing = null
+	var bd := 900.0
+	for q in things:
+		if q.is_char and q.state in [Thing.FREE, Thing.SIT] and Rules.band(loc, q.y) == bi and absf(q.x - p.x) < bd:
+			bd = absf(q.x - p.x); friend = q
+	var r := randf()
+	if friend != null and r < 0.5:
+		var side := 1.0 if p.x > friend.x else -1.0
+		p.tx = clampf(friend.x + side * (90 + randf() * 60), x_min, x_max)
+		p.ty = clampf(friend.y + 6, f[bi] + 10, f[bi + 1] - 6)
+		p.walking = true
+	elif r < 0.85:
+		p.tx = clampf(p.x + (randf() - 0.5) * 600, x_min, x_max)
+		p.ty = clampf(p.y + (randf() - 0.5) * 60, f[bi] + 10, f[bi + 1] - 6)
+		p.walking = true
+	else:
+		p.hop_v = 450
+		Sfx.play(Rules.pet_sound(p.id), -10)
+
+func set_night(on: bool, animate := true) -> void:
+	night = on
+	Save.data["night"] = on
+	var col := NIGHT if on else Color.WHITE
+	if animate:
+		create_tween().tween_property(cmod, "color", col, 1.2)
+	else:
+		cmod.color = col
+	backdrop.set_night(on, animate)
+	if not on:
+		for q in things:
+			if Rules.pet(q.id) and q.pstate == 1:
+				q.pstate = 0; (q as Prop).refresh_art()
+				if q.state == Thing.ON_TOP:
+					q.state = Thing.FREE; q.link = null
+					q.y = Rules.floor_below(loc, q.y - 4)
+	if animate:
+		for q in things:
+			if q.is_char and q.state != Thing.LIE:
+				(q as Character).do_emote(5 if on else 6)
+		Sfx.play("yawn" if on else "tada")
+
+## A traveller steps out of this place's door (or bus stop).
+func _arrive(info: Dictionary) -> void:
+	var door: Thing = null
+	for q in things:
+		if Rules.travel(q.id):
+			door = q
+	var look := Look.make(info["look"])
+	var cid: String = info.get("cid", "")
+	var c: Character = summon(cid, look) if cid != "" else make_char(look, 0, 0)
+	var dx := door.x if door != null else vis_x(0.5)
+	var dy := Rules.floor_below(loc, (door.y if door != null else 900.0) - 4)
+	c.x = dx; c.y = dy; c.pop = 0; c.state = Thing.FREE; c.link = null
+	c.set_look(look)
+	if door != null:
+		door.pstate = 1; (door as Prop).refresh_art(); (door as Prop).close_t = 2.5
+	var held: String = info.get("held", "")
+	if held != "":
+		var it := make_prop(held, c.x, c.y)
+		it.state = Thing.HELD; it.link = c; c.held = it
+	plan_walk(c, clampf(dx - 180, x_min, x_max), dy)
+	c.do_emote(1); sel = c
+	fx.burst(Vector2(dx, dy - 120), 12, Color("ffe066"), 2, 400)
+	Sfx.play("tada")
+	save_state()
 
 func use_kind(c: Character, q: Thing) -> int:
 	if q.is_char: return K_NONE
@@ -781,7 +966,7 @@ func use_kind(c: Character, q: Thing) -> int:
 	if Rules.is_slide(q.id): return K_SLIDE
 	if Rules.bouncy(q.id) and q.state == Thing.FREE: return K_BOUNCE
 	if Rules.holdable(q.id) and c.held == null and q.state != Thing.HELD: return K_PICK
-	if Rules.states(q.id) > 0 or Rules.capacity(q.id) > 0 or q.id in ["tree", "palm", "bush", "rocket", "camera", "guitar"]: return K_USE
+	if Rules.pet(q.id) or Rules.states(q.id) > 0 or Rules.capacity(q.id) > 0 or q.id in ["tree", "palm", "bush", "rocket", "camera", "guitar"]: return K_USE
 	return K_NONE
 
 func walk_use(c: Character, q: Thing) -> bool:
@@ -890,7 +1075,26 @@ func tap_thing(o: Thing) -> void:
 		p.refresh_art()
 		Sfx.play("pop")
 		return
+	if Rules.pet(p.id):
+		if p.pstate == 1:
+			p.pstate = 0; p.refresh_art()
+			if p.state == Thing.ON_TOP:
+				p.state = Thing.FREE; p.link = null
+				p.y = Rules.floor_below(loc, p.y - 4)
+		p.hop_v = 520; p.wiggle = 0.5; p.walking = false; p.pet_t = 2.0
+		fx.burst(Vector2(p.x, p.y - p.bh * p.sc * 0.8), 4, Color("ff6f8f"), 2, 220)
+		Sfx.play(Rules.pet_sound(p.id))
+		return
 	match p.id:
+		"door", "busstop":
+			if p.id == "door":
+				p.pstate = 1 - p.pstate; p.refresh_art(); p.close_t = 3.0 if p.pstate == 1 else 0.0
+			p.wiggle = 0.5
+			ui.say("Drop a character here to travel!")
+			Sfx.play("toggle"); return
+		"blender", "stove":
+			if p.cook_t > 0:
+				p.wiggle = 0.5; return
 		"gift":
 			if p.pstate == 0:
 				p.pstate = 1; p.wiggle = 1; p.refresh_art()
@@ -1126,6 +1330,9 @@ func load_state() -> void:
 			else:
 				th = make_prop(parts[0], px, py)
 				th.sc = float(parts[3])
+				for cid in Rules.starter(loc, parts[0]):
+					th.contents.append(cid)
+		_settle_on_surfaces()
 		return
 	for r in recs:
 		var th: Thing
@@ -1150,6 +1357,39 @@ func load_state() -> void:
 				th.state = Thing.FREE
 		if th is Prop:
 			(th as Prop).call_deferred("refresh_art")
+	_ensure_new_things()
+
+## Older saves get the newer furniture of this place (doors, pets, blender) once.
+func _ensure_new_things() -> void:
+	var added := false
+	for d in Rules.DEFAULTS.get(loc, []):
+		var parts: PackedStringArray = d.split(":")
+		if not parts[0] in Rules.ENSURE:
+			continue
+		var have := false
+		for th in things:
+			if th.id == parts[0]:
+				have = true
+		if have:
+			continue
+		var th2 := make_prop(parts[0], vis_x(float(parts[1])), float(parts[2]))
+		th2.sc = float(parts[3])
+		added = true
+	if added:
+		_settle_on_surfaces()
+
+## Props placed at a table's height start out standing on it.
+func _settle_on_surfaces() -> void:
+	for o in things:
+		if o.is_char or o.state != Thing.FREE or not Rules.rests_on_surfaces(o.id):
+			continue
+		for q in things:
+			var top := Rules.surface(q.id)
+			if q == o or q.is_char or top == 0:
+				continue
+			if absf(o.x - q.x) < q.bw * q.sc * 0.45 and absf(o.y - (q.y + top * q.sc)) < 24:
+				o.state = Thing.ON_TOP; o.link = q; o.off_x = (o.x - q.x) / q.sc
+				break
 
 func reset_place() -> void:
 	for th in things.duplicate():

@@ -20,6 +20,12 @@ var _pulse: Array = []   # [node, speed, phase, low, high]
 var _wheel: Node2D
 var _cabins: Array = []
 var _blip: Node2D
+var night := false
+var _day_only: Array[CanvasItem] = []     # sun: fades out at night
+var _night_only: Array[CanvasItem] = []   # night sky, fireflies: fade in
+var _lights: Array[PointLight2D] = []
+var _flies: Array = []                    # [node, base, phase]
+static var _unshaded: CanvasItemMaterial
 
 
 func setup(id: String) -> Backdrop:
@@ -37,6 +43,7 @@ func _ready() -> void:
 		"park": _park()
 		"beach": _beach()
 		_: _fair()
+	_place_lights()
 
 
 func _process(delta: float) -> void:
@@ -61,9 +68,116 @@ func _process(delta: float) -> void:
 		for i in _cabins.size():
 			var a := _wheel.rotation + deg_to_rad(i * 30)
 			(_cabins[i] as Node2D).position = _wheel.position + Vector2(cos(a), sin(a)) * 270
+	for f in _flies:
+		var base: Vector2 = f[1]
+		(f[0] as Node2D).position = base + Vector2(sin(t * 0.7 + f[2]) * 60, sin(t * 1.3 + f[2] * 2) * 30)
 	if _blip != null:  # heartbeat dot running across the monitor
 		var u := fmod(t * 0.45, 1.0)
 		_blip.position = Vector2(lerpf(20, 150, u), _ecg(u))
+
+
+# ================================================================ day & night
+func set_night(on: bool, animate := true) -> void:
+	night = on
+	for n in _day_only:
+		_fade(n, 0.0 if on else 1.0, animate)
+	for n in _night_only:
+		_fade(n, 1.0 if on else 0.0, animate)
+	for l in _lights:
+		if on:
+			l.visible = true
+		if animate:
+			var tw := create_tween().tween_property(l, "energy", 0.75 if on else 0.0, 1.2)
+			if not on:
+				tw.finished.connect(func(): l.visible = night)
+		else:
+			l.energy = 0.75 if on else 0.0
+			l.visible = on
+
+
+func _fade(n: CanvasItem, a: float, animate: bool) -> void:
+	if a > 0:
+		n.visible = true
+	if animate:
+		var tw := create_tween().tween_property(n, "modulate:a", a, 1.2)
+		if a == 0:
+			tw.finished.connect(func(): n.visible = n.modulate.a > 0.01)
+	else:
+		n.modulate.a = a
+		n.visible = a > 0
+
+
+static func unshaded() -> CanvasItemMaterial:
+	if _unshaded == null:
+		_unshaded = CanvasItemMaterial.new()
+		_unshaded.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	return _unshaded
+
+
+## Deep starry sky (not dimmed by the night tint) fading out towards the horizon at y1.
+func _night_sky(y1: float, moon_at := Vector2.ZERO) -> void:
+	var sky := _add(func(p: Paint):
+		p.fill(Paint.rect(L, TOP, R - L, y1 - TOP), Paint.vgrad(Color("1d2266"), Color(0.32, 0.25, 0.6, 0.0), 0, y1), 0.0)
+		for i in 70:
+			var c := Vector2(lerpf(L, R, Scenery.hash01(i + 700)), Scenery.hash01(i + 800) * y1 * 0.75)
+			var r := 2.0 + Scenery.hash01(i + 900) * 3.0
+			p.fill(Scenery.star(c, r * 1.8, r * 0.7, 4), Color(1, 1, 0.92, 0.6 + Scenery.hash01(i) * 0.4))
+		if moon_at != Vector2.ZERO:
+			p.glow(moon_at, 150, Color(1, 0.97, 0.8, 0.22), 50)
+			Scenery.cut(p, Paint.circle(moon_at, 52), Paint.circle(moon_at + Vector2(28, -16), 46), Color("fff4c2")))
+	sky.material = unshaded()
+	_night_only.append(sky)
+
+
+func _light(pos: Vector2, col: Color, size: float) -> void:
+	var l := PointLight2D.new()
+	l.texture = Prop.light_texture()
+	l.position = pos
+	l.color = col
+	l.texture_scale = size
+	l.energy = 0.0
+	l.visible = false
+	l.range_z_min = -4096
+	l.range_z_max = 4096
+	add_child(l)
+	_lights.append(l)
+
+
+## Lamps of each place that glow at night.
+func _place_lights() -> void:
+	var warm := Color(1, 0.84, 0.55)
+	match place:
+		"home":
+			var x0 := W * 0.05
+			var mid := x0 + (W * 0.9) * 0.56
+			_light(Vector2(x0 + 760, 260), warm, 3.2)
+			_light(Vector2(x0 + 280, 670), Color(1, 0.7, 0.8), 3.0)
+			_light(Vector2(mid + 560, 720), warm, 3.4)
+			_light(Vector2(mid + 480, 280), Color(0.8, 0.95, 1), 2.6)
+		"school":
+			_light(Vector2(W * 0.3, 220), warm, 3.6); _light(Vector2(W * 0.7, 220), warm, 3.6)
+		"hospital":
+			_light(Vector2(W * 0.5, 260), Color(1, 0.95, 0.95), 3.0)
+			_light(Vector2(W * 0.38 + 85, 390), Color(0.6, 1, 0.7), 1.4)
+			_light(Vector2(W * 0.8, 500), warm, 3.0)
+		"market":
+			_light(Vector2(W * 0.35, 320), warm, 3.6); _light(Vector2(W * 0.65, 320), warm, 3.6)
+		"cafe":
+			for i in 4:
+				_light(Vector2(W * (0.14 + i * 0.24), 250), warm, 3.0)
+		"beach":
+			_light(Vector2(W * 0.8, 560), Color(0.7, 0.8, 1), 3.4)
+		"fair":
+			_light(Vector2(W * 0.1, 600), Color(1, 0.75, 0.6), 3.0)
+			_light(Vector2(W * 0.9, 600), Color(0.7, 0.85, 1), 3.0)
+			_light(Vector2(W * 0.5, 400), Color(1, 0.85, 0.6), 4.5)
+		"park":
+			for i in 14:
+				var base := Vector2(lerpf(200, W - 200, Scenery.hash01(i + 600)), 650 + Scenery.hash01(i + 650) * 300)
+				var fly := _add(func(p: Paint): p.glow(Vector2.ZERO, 22, Color(0.95, 1, 0.55, 0.9), 4), base)
+				fly.material = unshaded()
+				_night_only.append(fly)
+				_flies.append([fly, base, Scenery.hash01(i) * 6.0])
 
 
 # ================================================================ building blocks
@@ -83,7 +197,8 @@ func _clouds(n: int, y0: float, y1: float, s0 := 0.9, s1 := 1.4) -> void:
 func _sun(pos: Vector2, r: float) -> void:
 	var rays := _add(func(p: Paint): Scenery.sun_rays(p, r), pos)
 	_spin.append([rays, 5.0])
-	_add(func(p: Paint): Scenery.sun_core(p, r), pos)
+	_day_only.append(rays)
+	_day_only.append(_add(func(p: Paint): Scenery.sun_core(p, r), pos))
 
 
 func _sky(p: Paint, y1: float, top: Color, bottom: Color) -> void:
@@ -112,6 +227,7 @@ func _home() -> void:
 		p.fill(Paint.ellipse(Vector2(-60, 1000), 520, 260), Color("b8ecb0"))
 		p.fill(Paint.ellipse(Vector2(W + 80, 990), 560, 280), Color("c4f0bb"))
 	)
+	_night_sky(760)
 	_sun(Vector2(W + 160, 120), 64)
 	_clouds(4, 20, 160, 0.8, 1.2)
 	_add(func(p: Paint):
@@ -424,6 +540,7 @@ func _park() -> void:
 	_add(func(p: Paint):
 		_sky(p, 640, Color("72cdff"), Color("e8f9ff"))
 	)
+	_night_sky(640, Vector2(W * 0.84, 150))
 	_sun(Vector2(W * 0.84, 150), 70)
 	_clouds(5, 50, 260)
 	_add(func(p: Paint):
@@ -476,6 +593,7 @@ func _beach() -> void:
 	_add(func(p: Paint):
 		_sky(p, 470, Color("6ccdff"), Color("fff1d6"))
 	)
+	_night_sky(470, Vector2(W * 0.8, 150))
 	_sun(Vector2(W * 0.8, 150), 68)
 	_clouds(4, 40, 220)
 	_add(func(p: Paint):
@@ -539,6 +657,7 @@ func _fair() -> void:
 		_sky(p, 770, Color("4a3fbf"), Color("ffb27a"))
 		p.fill(Paint.rect(L, 300, R - L, 470), Paint.vgrad(Color(0.85, 0.45, 0.85, 0.0), Color(1, 0.6, 0.6, 0.45), 300, 770), 0.0)
 	)
+	_night_sky(770)
 	for k in 2:  # twinkling stars in two groups
 		var stars := _add(func(p: Paint):
 			for i in 22:

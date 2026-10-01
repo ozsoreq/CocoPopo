@@ -26,6 +26,10 @@ var W := 1920.0
 var sun_rays: Node2D
 var sun_core: Node2D
 var halo: Node2D
+var night_sky: Node2D
+var moon: Node2D
+var cmod: CanvasModulate
+var night_btn: RoundButton
 
 func _ready() -> void:
 	# sky, sun and drifting clouds behind the planet
@@ -41,6 +45,19 @@ func _ready() -> void:
 		cl.set_meta("speed", 10.0 + Scenery.hash01(i + 11) * 12.0)
 		add_child(cl)
 		cl.add_to_group("mapcloud")
+	night_sky = Sketch.of(func(p: Paint):
+		p.fill(Paint.rect(-2000, -1000, 7000, 1900), Paint.vgrad(Color("1d2266"), Color(0.3, 0.25, 0.6, 0.0), 0, 900), 0.0)
+		for i in 90:
+			var c := Vector2(Scenery.hash01(i + 700) * 3000, Scenery.hash01(i + 800) * 620)
+			var r := 2.0 + Scenery.hash01(i + 900) * 3.0
+			p.fill(Scenery.star(c, r * 1.8, r * 0.7, 4), Color(1, 1, 0.92, 0.6 + Scenery.hash01(i) * 0.4)))
+	night_sky.material = Backdrop.unshaded()
+	add_child(night_sky)
+	moon = Sketch.of(func(p: Paint): Scenery.moon(p, 56))
+	moon.material = Backdrop.unshaded()
+	add_child(moon)
+	cmod = CanvasModulate.new()
+	add_child(cmod)
 	halo = Sketch.of(func(p: Paint):
 		p.soft(Paint.circle(Vector2.ZERO, R + 40), Color.WHITE, 90, 0.22))
 	add_child(halo)
@@ -77,6 +94,19 @@ func _ready() -> void:
 	_build_ui()
 	get_viewport().size_changed.connect(_layout)
 	_layout()
+	_apply_night(false)
+
+func _apply_night(animate: bool) -> void:
+	var on := bool(Save.data.get("night", false))
+	var dur := 1.0 if animate else 0.0
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(cmod, "color", Location.NIGHT if on else Color.WHITE, dur)
+	for n in [night_sky, moon]:
+		tw.tween_property(n, "modulate:a", 1.0 if on else 0.0, dur)
+	for n in [sun_rays, sun_core]:
+		tw.tween_property(n, "modulate:a", 0.0 if on else 1.0, dur)
+	night_btn.set_icon("icon_32" if on else "icon_31")
+	night_btn.color = Color("ffb02e") if on else Color("6c63d9")
 
 func _deco(p: Paint, kind: int, k: int) -> void:
 	match kind:
@@ -116,6 +146,14 @@ func _build_ui() -> void:
 	var dl := UI.label("Dress-up", 30, Color.WHITE, 10)
 	dl.name = "DressLabel"
 	ui.add_child(dl)
+	night_btn = RoundButton.new().setup("icon_31", Color("6c63d9"), 46)
+	night_btn.name = "Night"
+	night_btn.pressed.connect(func():
+		Save.data["night"] = not bool(Save.data.get("night", false))
+		Save.write()
+		Sfx.play("yawn" if Save.data["night"] else "tada")
+		_apply_night(true))
+	ui.add_child(night_btn)
 	var play := RoundButton.new().setup("icon_23", Color("3cc57b"), 72)
 	play.name = "Play"
 	play.pressed.connect(func(): enter.emit(Rules.PLACES[focus][0]))
@@ -128,6 +166,8 @@ func _layout() -> void:
 	halo.position = planet.position
 	sun_rays.position = Vector2(W - 210, 150)
 	sun_core.position = sun_rays.position
+	moon.position = sun_rays.position
+	(ui.get_node("Night") as Control).position = Vector2(W - 152, 262)
 	var title: Control = ui.get_node("Title")
 	title.reset_size()
 	title.position = Vector2((W - title.size.x) / 2, 18)

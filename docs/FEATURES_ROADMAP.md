@@ -12,12 +12,12 @@ Below are the features that would add the most depth, grouped and prioritised.
 
 | # | Feature | Why it matters | Effort |
 |---|---|---|---|
-| 1 | **Doors & travel between places** – walk a character through a door/bus stop to arrive in another place (they keep what they hold) | Turns 8 separate rooms into one connected world; the core Toca loop | M |
-| 2 | **Pets** – cat, dog, bunny, bird: follow their owner, can be held, fed, petted, sleep in a basket | Kids' favourite; adds a second kind of "living" thing | M |
-| 3 | **Cooking** – ingredients + stove/oven/blender produce dishes (bread → toast, egg → fried egg, fruit → smoothie), serve on plates | Gives the kitchen and café real play loops | M |
+| 1 | ✅ **Doors & travel between places** (done in 2.6) – walk a character through a door/bus stop to arrive in another place (they keep what they hold) | Turns 8 separate rooms into one connected world; the core Toca loop | M |
+| 2 | ✅ **Pets** (done in 2.6: cat, dog, bunny, pet bed) – cat, dog, bunny, bird: follow their owner, can be held, fed, petted, sleep in a basket | Kids' favourite; adds a second kind of "living" thing | M |
+| 3 | ✅ **Cooking** (done in 2.6: stove + blender recipes) – ingredients + stove/oven/blender produce dishes (bread → toast, egg → fried egg, fruit → smoothie), serve on plates | Gives the kitchen and café real play loops | M |
 | 4 | **Home designer** – change wallpaper, floors, windows per room; furniture shop tray; save several homes | Creative ownership; huge replay value | L |
 | 5 | **Wardrobes in the world** – closets/racks with clothes & hats that you drop onto characters (no editor needed) | Makeovers during play, connects editor and scenes | M |
-| 6 | **Day / night & weather** – sun/moon button, lights matter, characters get sleepy at night, rain/snow at park & beach | Atmosphere + reasons to use lamps, beds, umbrellas | M |
+| 6 | ✅ **Day / night** (done in 2.6; weather still to do) – sun/moon button, lights matter, characters get sleepy at night, rain/snow at park & beach | Atmosphere + reasons to use lamps, beds, umbrellas | M |
 | 7 | **Character names & needs** – names on tap; gentle hunger/sleep/fun bubbles that hint at things to do | Gives each character personality and soft goals | S–M |
 | 8 | **Photo mode & album** – camera button, stickers/frames, save to gallery | Kids love capturing their stories | S |
 | 9 | **Background music & per-place ambience** with volume controls | Big "feel" upgrade for little effort | S |
@@ -45,7 +45,7 @@ Ideas that build on what the engine gives us for free; none of them apply to the
 
 | # | Feature | Godot tech | Effort |
 |---|---|---|---|
-| G1 | **Real 2D lighting** – lamps, TV and fridge cast warm light; switching the lamp off really darkens the room; window light shafts move with the time of day | `PointLight2D`, `CanvasModulate`, light occluders on furniture | M |
+| G1 | ✅ **Real 2D lighting** (lamps, TV, fridge, stove and ceiling lights glow at night) – lamps, TV and fridge cast warm light; switching the lamp off really darkens the room; window light shafts move with the time of day | `PointLight2D`, `CanvasModulate`, light occluders on furniture | M |
 | G2 | **Living weather** – rain with splashes and puddles, snow that settles on roofs, wind that sways trees and curtains, rainbow after rain | `GPUParticles2D`, a sway vertex shader, `Tween` | M |
 | G3 | **Day/night cycle on the live world** – the painted sky, sun and clouds recolour smoothly; stars and street lamps appear at night | Animate `Paint` palettes + `CanvasModulate`, `AnimationPlayer` | S–M |
 | G4 | **Juicy physics toys** – balls that bounce off walls and each other, blocks that stack and topple, balloons that float to the ceiling | `RigidBody2D` / `PhysicsServer2D` in a toy layer | M |
@@ -59,4 +59,4 @@ Ideas that build on what the engine gives us for free; none of them apply to the
 | G12 | **Tablet & foldable layouts + 60/120 Hz** – adaptive UI for big screens, high-refresh smooth motion, battery saver | `Window` content scale, `Engine.max_fps`, low-processor mode | S |
 
 ## Suggested next sprint
-1 → 2 → 3 → 6 (connected world, pets, cooking, day/night), then 4 (home designer) as its own milestone.
+Done: 1, 2, 3, 6 (day/night) and G1. Next: 5 (wardrobes), 7 (names & needs), G2 (weather), then 4 (home designer).

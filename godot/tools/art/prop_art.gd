@@ -511,8 +511,166 @@ static func draw(g: Gfx, id: String, st := 0) -> void:
 			g.ln(0, -60, sin(ma) * 34, -60 - cos(ma) * 34, 4, INK)  # minute hand
 			g.ln(0, -60, sin(ha) * 22, -60 - cos(ha) * 22, 6, INK)  # hour hand
 			g.ci(0, -60, 5, 0xFFFF5C73)
+
+		# ---------------------------------------------------------------- cooking
+		"egg":
+			g.ov(0, -34, 26, 33, 0xFFFFF8EC)
+			g.ov(-9, -46, 6, 10, Gfx.al(WHITE, 160))
+		"bread":
+			g.rr(-52, -64, 104, 62, 26, 0xFFE9A85A)
+			g.rr(-46, -70, 92, 30, 15, 0xFFF5C27A)
+			for i in 3:
+				g.ln(-26 + i * 26, -62, -16 + i * 26, -50, 4, 0xFFC98340)
+		"banana":
+			g.path(VPath.new().move_to(-50, -54).quad_to(-20, -2, 48, -24).quad_to(54, -30, 50, -36)
+				.quad_to(-14, -22, -40, -62).close(), 0xFFFFDB4D)
+			g.rr(-56, -66, 14, 14, 5, 0xFF8A5A30)
+		"strawberry":
+			g.path(VPath.new().move_to(-30, -58).quad_to(-34, -20, 0, -2).quad_to(34, -20, 30, -58).quad_to(0, -70, -30, -58).close(), 0xFFFF4D5E)
+			for d in [[-14, -40], [8, -44], [-4, -24], [14, -26], [-18, -26]]:
+				g.ci(d[0], d[1], 2.5, 0xFFFFF0B0)
+			g.poly(0xFF5BBF4C, [-24, -62, 0, -54, 24, -62, 10, -70, 0, -78, -10, -70])
+		"tomato":
+			g.ci(0, -38, 36, 0xFFFF5340)
+			g.ov(-12, -50, 9, 6, Gfx.al(WHITE, 140))
+			g.poly(0xFF4FAF4C, [-16, -72, 0, -66, 16, -72, 6, -78, 0, -88, -6, -78])
+		"corn":
+			g.ov(0, -70, 22, 56, 0xFFFFD43B)
+			for r in 5:
+				for k in 2:
+					g.ci(-7 + k * 14, -106 + r * 16, 5, 0xFFFFE680)
+			g.path(VPath.new().move_to(-4, -6).quad_to(-40, -40, -26, -96).quad_to(-14, -50, 2, -24).close(), 0xFF6FD06A)
+			g.path(VPath.new().move_to(4, -6).quad_to(40, -40, 26, -96).quad_to(14, -50, -2, -24).close(), 0xFF5BBF4C)
+		"friedegg":
+			g.ov(0, -16, 60, 16, 0xFFE8EEF6)
+			g.path(VPath.new().move_to(-40, -20).quad_to(-46, -40, -18, -38).quad_to(0, -52, 22, -38).quad_to(50, -36, 38, -18).quad_to(0, -8, -40, -20).close(), WHITE)
+			g.ci(2, -30, 14, 0xFFFFC21F)
+			g.ci(-3, -34, 4, Gfx.al(WHITE, 170))
+		"toast":
+			g.path(VPath.new().move_to(-44, -4).line_to(-44, -62).quad_to(-50, -96, -20, -96).quad_to(0, -106, 20, -96)
+				.quad_to(50, -96, 44, -62).line_to(44, -4).close(), 0xFFC98A44)
+			g.path(VPath.new().move_to(-34, -12).line_to(-34, -60).quad_to(-38, -86, -16, -86).quad_to(0, -94, 16, -86)
+				.quad_to(38, -86, 34, -60).line_to(34, -12).close(), 0xFFF1C27D)
+			g.rr(-16, -58, 32, 18, 6, 0xFFFFE680)
+		"soup":
+			g.pie(0, -44, 62, 42, 0, 180, 0xFFFF8F5C)
+			g.ov(0, -46, 60, 12, 0xFFFF6B3D)
+			for d in [[-24, -48], [10, -44], [28, -50]]:
+				g.ci(d[0], d[1], 5, 0xFF7ED957)
+			g.ov(0, -4, 30, 6, 0xFFE07040)
+			g.path_s(VPath.new().move_to(-10, -64).quad_to(-20, -78, -8, -90), Gfx.al(WHITE, 200), 4)
+			g.path_s(VPath.new().move_to(12, -64).quad_to(2, -80, 14, -94), Gfx.al(WHITE, 200), 4)
+		"smoothie":
+			g.poly(Gfx.al(0xFFE6F6FF, 235), [-30, -120, 30, -120, 22, -4, -22, -4])
+			g.poly(0xFFFFE066, [-27, -98, 27, -98, 22, -6, -22, -6])
+			g.ln(8, -150, 0, -96, 6, 0xFFFF6F8F)
+			g.ci(-20, -112, 12, 0xFF8BE07A)
+		"milkshake":
+			g.poly(Gfx.al(0xFFE6F6FF, 235), [-32, -118, 32, -118, 22, -4, -22, -4])
+			g.poly(0xFFFF9EC4, [-29, -100, 29, -100, 22, -6, -22, -6])
+			g.ci(-12, -122, 16, WHITE); g.ci(10, -126, 18, WHITE); g.ci(0, -140, 14, WHITE)
+			g.ci(2, -158, 8, 0xFFFF4D5E)
+			g.ln(18, -168, 10, -120, 6, 0xFF6FC3FF)
+		"blender":
+			g.rr(-40, -54, 80, 54, 14, 0xFFFF8FA3)
+			g.ci(0, -28, 9, WHITE)
+			g.poly(Gfx.al(0xFFE6F6FF, 225), [-32, -186, 32, -186, 26, -56, -26, -56])
+			if st == 1:
+				g.poly(0xFFFFD86B, [-28, -140, 28, -140, 25, -60, -25, -60])
+				for i in 3:
+					g.ci(-12 + i * 12, -150 - (i % 2) * 10, 7, 0xFFFFE9A0)
+			g.rr(-36, -198, 72, 18, 8, 0xFF6B6480)
+			g.ln(26, -170, 40, -150, 6, 0xFFB0BED0)
+			g.ln(40, -150, 30, -96, 6, 0xFFB0BED0)
+
+		# ---------------------------------------------------------------- pets (face right; state 1 = asleep)
+		"cat":
+			_pet(g, st, 0xFFFFB061, 0xFFFFD9A8, "cat")
+		"dog":
+			_pet(g, st, 0xFFC98A52, 0xFFF2D2AE, "dog")
+		"bunny":
+			_pet(g, st, 0xFFF2EEF5, 0xFFFFC9D9, "bunny")
+		"petbed":
+			g.ov(0, -30, 100, 30, 0xFF8E7BFF)
+			g.ov(0, -38, 76, 18, 0xFFC8BEFF)
+			g.ci(-46, -40, 6, WHITE); g.ci(40, -36, 5, WHITE)
+
+		# ---------------------------------------------------------------- travel
+		"door":
+			g.rr(-76, -270, 152, 270, 16, 0xFFFFFFFF)
+			if st == 1:  # open: a peek of sky and grass
+				g.rr(-62, -256, 124, 256, 10, 0xFFA8E2FF)
+				g.rr(-62, -60, 124, 60, 0, 0xFF7ED957)
+				g.ci(30, -200, 16, 0xFFFFE066)
+				g.path(VPath.new().poly([-62, -256, -100, -244, -100, -10, -62, 0]), 0xFF6FC3FF)
+				g.ci(-88, -128, 7, 0xFFFFD43B)
+			else:
+				g.rr(-62, -256, 124, 256, 10, 0xFF6FC3FF)
+				g.rr(-48, -240, 96, 96, 8, 0xFF8FD3FF)
+				g.rr(-48, -128, 96, 100, 8, 0xFF8FD3FF)
+				g.ci(40, -128, 8, 0xFFFFD43B)
+			g.rr(-90, -282, 180, 18, 9, 0xFFE5C48E)
+		"busstop":
+			g.rr(-6, -300, 12, 300, 5, 0xFF8A93A8)
+			g.ci(0, -270, 44, 0xFF4FB3FF)
+			g.ci(0, -270, 32, WHITE)
+			g.rr(-18, -286, 36, 26, 8, 0xFFFF6F8F)
+			g.ci(-10, -258, 5, 0xFF4B4660); g.ci(10, -258, 5, 0xFF4B4660)
+			g.rr(-80, -110, 160, 18, 9, 0xFFFFC66B)
+			g.rr(-70, -92, 12, 92, 5, 0xFF8A93A8); g.rr(58, -92, 12, 92, 5, 0xFF8A93A8)
 		_:
 			g.rr(-40, -80, 80, 80, 12, 0xFFB0BED0)
+
+
+## Cute pet sitting (or curled up asleep), facing right.
+static func _pet(g: Gfx, st: int, fur: int, light: int, kind: String) -> void:
+	var dk := Gfx.dk(fur, 0.18)
+	if st == 1:  # asleep: curled ball, tail around, closed eyes
+		g.ov(0, -34, 62, 34, fur)
+		g.ov(10, -26, 34, 16, light)
+		g.ci(44, -40, 26, fur)
+		if kind == "cat":
+			g.poly(fur, [26, -58, 32, -84, 46, -62]); g.poly(fur, [52, -62, 62, -84, 66, -56])
+		elif kind == "bunny":
+			g.ov(30, -84, 9, 26, fur); g.ov(50, -86, 9, 26, fur)
+		else:
+			g.ov(26, -48, 10, 18, dk)
+		g.arc(38, -42, 6, 4, 0, 180, 3, 0xFF4B4660)
+		g.arc(54, -42, 6, 4, 0, 180, 3, 0xFF4B4660)
+		g.ci(64, -32, 4, 0xFFFF8FA3)
+		return
+	# body + legs
+	g.ov(-6, -40, 44, 36, fur)
+	g.ov(-2, -32, 26, 22, light)
+	g.rr(-34, -18, 18, 18, 9, fur); g.rr(10, -18, 18, 18, 9, fur)
+	# tail
+	if kind == "cat":
+		g.path_s(VPath.new().move_to(-44, -32).quad_to(-80, -40, -66, -90), fur, 14)
+	elif kind == "dog":
+		g.path_s(VPath.new().move_to(-46, -44).quad_to(-66, -60, -64, -82), fur, 12)
+	else:
+		g.ci(-50, -36, 14, WHITE)
+	# head
+	var hy := -96.0 if kind != "bunny" else -90.0
+	if kind == "cat":
+		g.poly(fur, [6, hy - 22, 12, hy - 58, 32, hy - 30]); g.poly(fur, [36, hy - 30, 54, hy - 58, 60, hy - 22])
+		g.poly(0xFFFF9EC4, [14, hy - 28, 17, hy - 46, 26, hy - 32]); g.poly(0xFFFF9EC4, [42, hy - 32, 50, hy - 46, 52, hy - 28])
+	elif kind == "bunny":
+		g.ov(16, hy - 54, 11, 34, fur); g.ov(46, hy - 54, 11, 34, fur)
+		g.ov(16, hy - 54, 5, 24, 0xFFFFC9D9); g.ov(46, hy - 54, 5, 24, 0xFFFFC9D9)
+	g.ci(32, hy, 36, fur)
+	if kind == "dog":
+		g.ov(4, hy + 2, 12, 26, dk); g.ov(60, hy + 2, 12, 26, dk)
+		g.ov(40, hy + 14, 18, 13, light)
+	g.ci(22, hy - 4, 5, 0xFF2B2230); g.ci(46, hy - 4, 5, 0xFF2B2230)
+	g.ci(24, hy - 6, 1.8, WHITE); g.ci(48, hy - 6, 1.8, WHITE)
+	g.ov(36, hy + 8, 6, 4, 0xFFFF7F9F if kind != "dog" else 0xFF2B2230)
+	g.arc(31, hy + 12, 5, 4, 0, 180, 2.5, 0xFF4B4660)
+	g.arc(41, hy + 12, 5, 4, 0, 180, 2.5, 0xFF4B4660)
+	g.ci(14, hy + 8, 6, Gfx.al(0xFFFF8FA3, 150)); g.ci(54, hy + 8, 6, Gfx.al(0xFFFF8FA3, 150))
+	if kind == "dog":
+		g.rr(4, hy + 24, 40, 9, 4.5, 0xFFFF5C73)
+		g.ci(26, hy + 34, 5, 0xFFFFD43B)
 
 
 static func _tv_screen(g: Gfx, st: int) -> void:

@@ -6,8 +6,8 @@ const Gfx := preload("res://tools/art/gfx.gd")
 const VPath := preload("res://tools/art/vpath.gd")
 
 enum { HOME, CAMERA, BROOM, PEOPLE, CUBE, PLUS, MINUS, CHECK, DICE, CLOSE, TRASH, EDIT, SMILE, FLIP, COPY,
-	BACK, STAR, SHIRT, FACE, HAIR, SPARK, PERSON_PLUS, SAVE, PLAY, CHAIR, ZZZ, HAND, INBOX, BUBBLES, SLIDEDOWN, UP }
-const COUNT := 31
+	BACK, STAR, SHIRT, FACE, HAIR, SPARK, PERSON_PLUS, SAVE, PLAY, CHAIR, ZZZ, HAND, INBOX, BUBBLES, SLIDEDOWN, UP, MOON, SUN, DOOR }
+const COUNT := 34
 const EMOTES := 7
 
 
@@ -124,6 +124,22 @@ static func icon(g: Gfx, id: int, col: int) -> void:
 			g.poly(col, [-18, -6, 18, -6, 0, -28])
 		PLAY:
 			g.poly(col, [-14, -28, 30, 0, -14, 28])
+		MOON:
+			for poly in Geometry2D.clip_polygons(_circ(Vector2(-4, 0), 26), _circ(Vector2(10, -10), 22)):
+				var pts: Array = []
+				for v in poly:
+					pts.append_array([v.x, v.y])
+				g.poly(col, pts)
+			g.ci(18, 14, 4, col); g.ci(24, -22, 3, col)
+		SUN:
+			g.ci(0, 0, 16, col)
+			for i in 8:
+				var a := i * PI / 4
+				g.ln(cos(a) * 24, sin(a) * 24, cos(a) * 32, sin(a) * 32, 6, col)
+		DOOR:
+			g.rr(-20, -30, 40, 58, 6, col)
+			g.ci(10, 0, 4, 0x77000000)
+			g.poly(col, [24, -12, 36, 0, 24, 12])
 		SAVE:  # heart
 			g.path(VPath.new().move_to(0, 26).cubic_to(-40, -4, -26, -30, 0, -14).cubic_to(26, -30, 40, -4, 0, 26).close(), col)
 
@@ -151,6 +167,13 @@ static func emote(g: Gfx, kind: int) -> void:
 			g.text("z z z", 0, 10, 40, 0xFF8A93C8)
 		_:
 			_small(g, SPARK, -7, 0.85, 0xFFB67CFF)
+
+
+static func _circ(c: Vector2, r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 48:
+		pts.append(c + Vector2(cos(i * TAU / 48), sin(i * TAU / 48)) * r)
+	return pts
 
 
 static func _small(g: Gfx, id: int, y: float, s: float, col: int) -> void:

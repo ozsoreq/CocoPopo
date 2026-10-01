@@ -38,6 +38,8 @@ func _show_map() -> void:
 	_swap(m)
 
 var editor: DressUp = null
+var picker: TravelPicker = null
+var _arrival := {}
 
 ## Opens the dress-up editor over the current screen; on_done(look) runs when the player taps the tick.
 func open_editor(start: Look, title: String, on_done: Callable) -> void:
@@ -87,6 +89,9 @@ func go_place(place: String) -> void:
 	await _fade_to(1.0)
 	var l := Location.new()
 	l.setup(place)
+	l.arriving = _arrival
+	_arrival = {}
+	l.travel.connect(_on_travel.bind(l))
 	l.go_map.connect(go_map)
 	l.edit_char.connect(func(c: Character): open_editor(c.look, "Edit character", func(nl: Look):
 		c.set_look(nl); c.hop_v = 600
@@ -100,6 +105,27 @@ func go_place(place: String) -> void:
 	_swap(l)
 	await _fade_to(0.0)
 	busy = false
+
+## A character stepped into a door: ask where to, then carry them (and what they hold) there.
+func _on_travel(c: Character, from: Location) -> void:
+	if picker != null:
+		return
+	picker = TravelPicker.new().setup(from.loc)
+	add_child(picker)
+	picker.cancelled.connect(func():
+		picker.queue_free(); picker = null
+		if is_instance_valid(c):
+			c.hop_v = 400; c.do_emote(4))
+	picker.chosen.connect(func(dest: String):
+		picker.queue_free(); picker = null
+		if not is_instance_valid(c) or not from.things.has(c):
+			return
+		_arrival = {"cid": c.cid, "look": c.look.to_array(), "held": c.held.id if c.held != null else ""}
+		if c.held != null:
+			from.remove_thing(c.held)
+		from.remove_thing(c)
+		from.save_state()
+		go_place(dest))
 
 func go_map() -> void:
 	if busy:
@@ -127,6 +153,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if editor != null:
 			editor.finished.emit(null, false)
+		elif picker != null:
+			picker.cancelled.emit()
 		elif screen is Location:
 			var l := screen as Location
 			if l.ui.tray.tab != 0:

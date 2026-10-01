@@ -128,13 +128,13 @@ static func _beach(p: Paint) -> void:
 
 static func _fair(p: Paint) -> void:
 	for side in [-1, 1]:
-		p.line(Vector2(0, -104), Vector2(side * 46, 0), Color("dcd6f5"), 9)
-	p.ring(Vector2(0, -104), 70, Color.WHITE, 8)
+		p.line(Vector2(0, -104), Vector2(side * 46, 0), Color("b9aee8"), 9)
+	p.ring(Vector2(0, -104), 70, Color("9d8cf0"), 8)
 	var cols := [Color("ff6f8f"), Color("ffd43b"), Color("4fb3ff")]
 	for i in 6:
 		var a := deg_to_rad(i * 60 + 15)
 		var c := Vector2(0, -104) + Vector2(cos(a), sin(a)) * 70
-		p.line(Vector2(0, -104), c, Color(1, 1, 1, 0.85), 4)
+		p.line(Vector2(0, -104), c, Color("c3b8f5"), 4)
 		p.fill(Paint.rrect(c.x - 11, c.y - 2, 22, 18, 7), cols[i % 3])
 	p.fill(Paint.circle(Vector2(0, -104), 10), Color("ffd43b"))
 	# little tent

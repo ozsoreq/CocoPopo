@@ -7,7 +7,7 @@ var _last := {}
 
 func _ready() -> void:
 	for n in ["pop", "drop", "bite", "toggle", "tick", "bounce", "spark", "whoosh", "splash", "tada",
-			"strum", "squeak", "wheee", "vroom", "yawn", "swoosh_map"]:
+			"strum", "squeak", "wheee", "vroom", "yawn", "swoosh_map", "meow", "woof", "sizzle", "blend"]:
 		var s = load("res://sfx/%s.wav" % n)
 		if s:
 			_streams[n] = s

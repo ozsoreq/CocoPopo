@@ -5,6 +5,7 @@ extends CanvasLayer
 var loc: Location
 var btn_home: RoundButton
 var btn_reset: RoundButton
+var btn_night: RoundButton
 var btn_people: RoundButton
 var btn_items: RoundButton
 var tray: Tray
@@ -23,6 +24,12 @@ func _ready() -> void:
 	btn_reset = RoundButton.new().setup("icon_2", Color("ffb02e"))
 	btn_reset.pressed.connect(_on_reset)
 	add_child(btn_reset)
+	btn_night = RoundButton.new().setup("icon_31", Color("6c63d9"))
+	btn_night.pressed.connect(func():
+		loc.set_night(not loc.night)
+		_sync_night())
+	add_child(btn_night)
+	_sync_night.call_deferred()
 	tray = Tray.new()
 	tray.loc = loc
 	add_child(tray)
@@ -50,10 +57,16 @@ func _layout() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	btn_home.position = Vector2(48, 40)
 	btn_reset.position = Vector2(vs.x - 152, 40)
+	btn_night.position = Vector2(vs.x - 290, 40)
 	btn_people.position = Vector2(54, vs.y - 148)
 	btn_items.position = Vector2(194, vs.y - 148)
 	flash_rect.size = vs
 	tray.layout(vs)
+
+## Moon when it's day (tap for night), sun at night.
+func _sync_night() -> void:
+	btn_night.set_icon("icon_32" if loc.night else "icon_31")
+	btn_night.color = Color("ffb02e") if loc.night else Color("6c63d9")
 
 func _toggle_tray(tab: int) -> void:
 	tray.set_tab(0 if tray.tab == tab else tab)
