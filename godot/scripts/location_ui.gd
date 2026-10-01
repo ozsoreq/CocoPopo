@@ -101,7 +101,7 @@ func _update_popup() -> void:
 			c.queue_free()
 		var defs := []
 		if s.is_char:
-			defs.append(["icon_8", "ffb02e", "makeover"])
+			defs.append(["icon_11", "6c7bff", "edit"])
 			defs.append(["icon_12", "3cc5af", "emote"])
 		defs.append_array([["icon_13", "4fb3ff", "flip"], ["icon_5", "58b368", "big"], ["icon_6", "58b368", "small"],
 			["icon_14", "8e7bff", "copy"], ["icon_10", "ff5c73", "delete"]])
@@ -127,6 +127,8 @@ func _popup_action(a: String) -> void:
 	if s == null:
 		return
 	match a:
+		"edit":
+			loc.edit_char.emit(s as Character)
 		"makeover":
 			var c := s as Character
 			c.set_look(Look.random_look())

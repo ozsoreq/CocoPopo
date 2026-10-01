@@ -3,6 +3,7 @@ extends Node2D
 ## The rotating little planet: drag to spin, it snaps to a place; tap the building (or play) to go in.
 
 signal enter(place: String)
+signal dress_up
 
 const R := 980.0
 const STEP := 45.0
@@ -92,6 +93,13 @@ func _build_ui() -> void:
 	right.mirror = true
 	right.pressed.connect(func(): spin_by(1))
 	ui.add_child(right)
+	var dress := RoundButton.new().setup("icon_21", Color("ff6f8f"), 56)
+	dress.name = "Dress"
+	dress.pressed.connect(func(): dress_up.emit())
+	ui.add_child(dress)
+	var dl := UI.label("Dress-up", 30, Color.WHITE, 10)
+	dl.name = "DressLabel"
+	ui.add_child(dl)
 	var play := RoundButton.new().setup("icon_23", Color("3cc57b"), 72)
 	play.name = "Play"
 	play.pressed.connect(func(): enter.emit(Rules.PLACES[focus][0]))
@@ -107,6 +115,8 @@ func _layout() -> void:
 	(ui.get_node("Left") as Control).position = Vector2(54, 584)
 	(ui.get_node("Right") as Control).position = Vector2(W - 166, 584)
 	(ui.get_node("Play") as Control).position = Vector2(W / 2 - 72, 905)
+	(ui.get_node("Dress") as Control).position = Vector2(44, 36)
+	(ui.get_node("DressLabel") as Control).position = Vector2(34, 152)
 
 func rel(a: float) -> float:
 	return fposmod(a - ang + 180.0, 360.0) - 180.0

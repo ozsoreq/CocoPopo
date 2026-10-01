@@ -17,6 +17,18 @@ func setup(kind: String, payload) -> void:
 			dice.position = Vector2(0, -12)
 			inner.add_child(dice)
 			_label = "Surprise!"
+		"create":
+			var plus := Art.sprite("icon_21", Color("ff6f8f"))
+			plus.scale *= 1.5
+			plus.position = Vector2(0, -12)
+			inner.add_child(plus)
+			_label = "Create"
+		"lib":
+			var cl := Character.new(Look.make(payload))
+			cl.y = 60; cl.sc = 0.38; cl.pop = 1
+			inner.add_child(cl)
+			cl.apply_visual(0.0)
+			_label = "Mine"
 		"char":
 			var c := Character.new(Look.preset(payload))
 			c.y = 60; c.sc = 0.38; c.pop = 1

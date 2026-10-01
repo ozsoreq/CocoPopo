@@ -13,6 +13,7 @@ func run(m: Node, mode: String) -> void:
 	match mode:
 		"shots": await shots()
 		"smoke": await smoke()
+		"editor": await editor_test()
 	get_tree().quit()
 
 func frames(n: int) -> void:
@@ -156,3 +157,78 @@ func smoke() -> void:
 	m.spin_by(1)
 	await frames(60)
 	check("world spins", m.focus == 1)
+
+func editor_test() -> void:
+	Save.data.erase("lib")
+	main.open_editor(Look.preset(0), "New character", main._add_to_lib)
+	await frames(40)
+	var ed: DressUp = main.editor
+	check("editor opened", ed != null)
+	for i in 5:
+		ed._set_tab(i)
+		await frames(8)
+		await shot("editor_tab%d" % i)
+	ed._set_tab(1)
+	ed._apply(1, 12)
+	ed._apply(2, 6)
+	ed._set_tab(3)
+	ed._apply(5, 1)
+	ed._apply(6, 3)
+	ed._apply(12, 2)
+	await frames(10)
+	check("options applied", ed.work.hair_style == 12 and ed.work.hair_color == 6 and ed.work.top == 1 and ed.work.bstyle == 2)
+	# tap an option card through real input
+	ed._set_tab(0)
+	await frames(5)
+	var card: Node = null
+	for c in ed.content.get_children():
+		if c.has_meta("opt") and c.get_meta("opt") == [10, 2]:
+			card = c
+	var p: Vector2 = ed.panel.position + ed.content.position + card.position + Vector2(60, 60)
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = p - ed.panel.position
+	ed._panel_input(ev)
+	var ev2 := ev.duplicate()
+	ev2.pressed = false
+	ed._panel_input(ev2)
+	await frames(5)
+	check("tap card sets body type (teen)", ed.work.body == 2)
+	await shot("editor_teen")
+	ed.finished.emit(ed.work, true)
+	await frames(40)
+	check("saved to My Characters", Save.data.get("lib", []).size() == 1 and main.editor == null)
+	# edit a character inside a place
+	main.go_place("park")
+	await frames(40)
+	var l := loc()
+	var kid: Character = null
+	for th in l.things:
+		if th.is_char:
+			kid = th
+	l.edit_char.emit(kid)
+	await frames(40)
+	check("editor opens for scene character", main.editor != null)
+	main.editor._apply(8, 5)
+	await frames(5)
+	main.editor.finished.emit(main.editor.work, true)
+	await frames(40)
+	check("scene character got the crown", kid.look.acc == 5)
+	l.ui._toggle_tray(1)
+	await frames(30)
+	await shot("tray_with_mine")
+	var n_before := l.things.size()
+	l.new_char.emit()
+	await frames(40)
+	main.editor.finished.emit(main.editor.work, true)
+	await frames(60)
+	check("create from tray spawns a character", l.things.size() == n_before + 1 and Save.data["lib"].size() == 2)
+	main.go_map()
+	await frames(40)
+	(main.screen as WorldMap).dress_up.emit()
+	await frames(40)
+	check("dress-up from the world map", main.editor != null)
+	main.editor.finished.emit(null, false)
+	await frames(40)
+	check("cancel closes editor", main.editor == null and Save.data["lib"].size() == 2)

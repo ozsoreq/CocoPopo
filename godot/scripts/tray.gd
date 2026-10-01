@@ -88,7 +88,11 @@ func _rebuild() -> void:
 	chips.visible = tab == 2
 	title.visible = tab == 1
 	if tab == 1:
+		cards.append(["create", null])
 		cards.append(["new", null])
+		var lib: Array = Save.data.get("lib", [])
+		for i in range(lib.size() - 1, -1, -1):
+			cards.append(["lib", lib[i]])
 		for i in Look.PRESETS.size():
 			cards.append(["char", i])
 	else:
@@ -178,14 +182,21 @@ func _press_card(on: bool) -> void:
 func _spawn(i: int) -> Thing:
 	var c: Array = cards[i]
 	match c[0]:
+		"create":
+			return null
 		"new":
 			return loc.make_char(Look.random_look(), 0, 0)
+		"lib":
+			return loc.make_char(Look.make(c[1]), 0, 0)
 		"char":
 			return loc.make_char(Look.preset(c[1]), 0, 0)
 		_:
 			return loc.make_prop(c[1], 0, 0)
 
 func _tap_card(i: int) -> void:
+	if cards[i][0] == "create":
+		loc.new_char.emit()
+		return
 	var th := _spawn(i)
 	if th == null:
 		return

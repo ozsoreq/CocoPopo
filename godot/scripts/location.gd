@@ -3,6 +3,8 @@ extends Node2D
 ## One playable place: background, characters and props, the life simulation and all interactions.
 
 signal go_map
+signal edit_char(c: Character)
+signal new_char
 
 const WB := 2560.0
 const H := 1080.0
@@ -122,6 +124,14 @@ func make_prop(pid: String, px: float, py: float) -> Prop:
 	var p := Prop.new(pid)
 	p.x = px; p.y = py
 	return add_thing(p) as Prop
+
+func spawn_char(l: Look) -> void:
+	var c := make_char(l, vis_x(0.5) + (randf() - 0.5) * 300, 420)
+	c.pop = 0
+	sel = c
+	start_fall(c, 0, 0)
+	if ui.tray.tab == 1:
+		ui.tray.set_tab(1)
 
 func vis_x(frac: float) -> float:
 	return (WB - view_w) / 2.0 + frac * view_w

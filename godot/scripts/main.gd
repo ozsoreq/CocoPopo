@@ -34,7 +34,53 @@ func _ready() -> void:
 func _show_map() -> void:
 	var m := WorldMap.new()
 	m.enter.connect(go_place)
+	m.dress_up.connect(func(): open_editor(Look.random_look(), "New character", _add_to_lib))
 	_swap(m)
+
+var editor: DressUp = null
+
+## Opens the dress-up editor over the current screen; on_done(look) runs when the player taps the tick.
+func open_editor(start: Look, title: String, on_done: Callable) -> void:
+	if editor != null or busy:
+		return
+	busy = true
+	await _fade_to(1.0)
+	editor = DressUp.new()
+	editor.open(start, title)
+	editor.finished.connect(_editor_closed.bind(on_done))
+	add_child(editor)
+	if screen:
+		screen.process_mode = Node.PROCESS_MODE_DISABLED
+		_set_screen_ui_visible(false)
+	await _fade_to(0.0)
+	busy = false
+
+func _editor_closed(look: Look, saved: bool, on_done: Callable) -> void:
+	if busy:
+		return
+	busy = true
+	await _fade_to(1.0)
+	editor.queue_free()
+	editor = null
+	if screen:
+		screen.process_mode = Node.PROCESS_MODE_INHERIT
+		_set_screen_ui_visible(true)
+	if saved and look != null:
+		on_done.call(look)
+	await _fade_to(0.0)
+	busy = false
+
+func _set_screen_ui_visible(v: bool) -> void:
+	for c in screen.get_children():
+		if c is CanvasLayer:
+			c.visible = v
+
+func _add_to_lib(l: Look) -> void:
+	var lib: Array = Save.data.get("lib", [])
+	lib.append(l.to_array())
+	Save.data["lib"] = lib
+	Save.write()
+	Sfx.play("tada")
 
 func go_place(place: String) -> void:
 	if busy:
@@ -45,6 +91,8 @@ func go_place(place: String) -> void:
 	var l := Location.new()
 	l.setup(place)
 	l.go_map.connect(go_map)
+	l.edit_char.connect(func(c: Character): open_editor(c.look, "Edit character", func(nl: Look): c.set_look(nl); c.hop_v = 600))
+	l.new_char.connect(func(): open_editor(Look.random_look(), "New character", func(nl: Look): _add_to_lib(nl); l.spawn_char(nl)))
 	_swap(l)
 	await _fade_to(0.0)
 	busy = false
@@ -73,7 +121,9 @@ func _fade_to(a: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-		if screen is Location:
+		if editor != null:
+			editor.finished.emit(null, false)
+		elif screen is Location:
 			var l := screen as Location
 			if l.ui.tray.tab != 0:
 				l.ui._toggle_tray(l.ui.tray.tab)
