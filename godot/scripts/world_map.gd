@@ -23,8 +23,27 @@ var down_x := 0.0
 var last_x := 0.0
 var last_ms := 0
 var W := 1920.0
+var sun_rays: Node2D
+var sun_core: Node2D
+var halo: Node2D
 
 func _ready() -> void:
+	# sky, sun and drifting clouds behind the planet
+	add_child(Sketch.of(func(p: Paint):
+		p.fill(Paint.rect(-2000, -1000, 7000, 3200), Paint.vgrad(Color("6cc8ff"), Color("e3f6ff"), 0, 1080), 0.0)))
+	sun_rays = Sketch.of(func(p: Paint): Scenery.sun_rays(p, 70))
+	add_child(sun_rays)
+	sun_core = Sketch.of(func(p: Paint): Scenery.sun_core(p, 70))
+	add_child(sun_core)
+	for i in 5:
+		var s := 0.8 + Scenery.hash01(i + 3) * 0.6
+		var cl := Sketch.of(func(p: Paint): Scenery.cloud(p, s), Vector2(Scenery.hash01(i) * 2400, 60 + Scenery.hash01(i + 7) * 220))
+		cl.set_meta("speed", 10.0 + Scenery.hash01(i + 11) * 12.0)
+		add_child(cl)
+		cl.add_to_group("mapcloud")
+	halo = Sketch.of(func(p: Paint):
+		p.soft(Paint.circle(Vector2.ZERO, R + 40), Color.WHITE, 90, 0.22))
+	add_child(halo)
 	planet = Node2D.new()
 	planet.set_script(load("res://scripts/planet.gd"))
 	add_child(planet)
@@ -34,9 +53,8 @@ func _ready() -> void:
 			var piv := Node2D.new()
 			piv.rotation = deg_to_rad(k * STEP + STEP / 2 + (-9 if j == 0 else 8))
 			planet.add_child(piv)
-			var s := Art.sprite("prop_" + (["tree", "palm"][k % 2] if j == 0 else "bush"))
-			s.position = Vector2(0, -R + 6)
-			s.scale *= 0.62
+			var kind := k % 2 if j == 0 else 2
+			var s := Sketch.of(_deco.bind(kind, k), Vector2(0, -R + 10))
 			piv.add_child(s)
 	for k in Rules.PLACES.size():
 		var piv2 := Node2D.new()
@@ -45,10 +63,9 @@ func _ready() -> void:
 		var holder := Node2D.new()
 		holder.position = Vector2(0, -R + 8)
 		piv2.add_child(holder)
-		var shadow := Node2D.new()
-		holder.add_child(Art.sprite("place_" + Rules.PLACES[k][0]))
+		var id: String = Rules.PLACES[k][0]
+		holder.add_child(Sketch.of(func(p: Paint): Vignettes.draw(p, id)))
 		buildings.append(holder)
-		var _s := shadow
 	for k in 5:
 		var piv3 := Node2D.new()
 		planet.add_child(piv3)
@@ -57,16 +74,15 @@ func _ready() -> void:
 		c.y = -R + 4
 		piv3.add_child(c)
 		walkers.append([piv3, c, k * 72.0 + 14, 1.0 if k % 2 == 0 else -1.0])
-	for i in 4:
-		var cl := Art.sprite("cloud", Color(1, 1, 1, 0.92))
-		cl.position = Vector2(randf() * 2400, 60 + randf() * 200)
-		cl.set_meta("speed", 10.0 + randf() * 12.0)
-		cl.z_index = -10
-		add_child(cl)
-		cl.add_to_group("mapcloud")
 	_build_ui()
 	get_viewport().size_changed.connect(_layout)
 	_layout()
+
+func _deco(p: Paint, kind: int, k: int) -> void:
+	match kind:
+		0: Scenery.tree(p, 0.62, k % 3)
+		1: Scenery.palm(p, 0.62)
+		_: Scenery.bush(p, 0.62)
 
 func _build_ui() -> void:
 	ui = CanvasLayer.new()
@@ -109,6 +125,9 @@ func _layout() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	W = vs.x
 	planet.position = Vector2(W / 2, 650 + R)
+	halo.position = planet.position
+	sun_rays.position = Vector2(W - 210, 150)
+	sun_core.position = sun_rays.position
 	var title: Control = ui.get_node("Title")
 	title.reset_size()
 	title.position = Vector2((W - title.size.x) / 2, 18)
@@ -148,6 +167,7 @@ func _process(delta: float) -> void:
 		focus = f
 		Sfx.play("tick", -8)
 	planet.rotation = deg_to_rad(-ang)
+	sun_rays.rotation += dt * 0.12
 	for i in n:
 		var r := rel(i * STEP)
 		var foc := maxf(0.0, 1.0 - absf(r) / 30.0)
@@ -174,20 +194,6 @@ func _process(delta: float) -> void:
 	name_pill.position = Vector2((W - name_pill.size.x) / 2, 200)
 	name_pill.scale = Vector2.ONE * (0.6 + 0.4 * nf)
 	name_pill.modulate.a = nf
-	queue_redraw()
-
-func _draw() -> void:
-	var top := Color("6fcbff")
-	var bot := Color("d9f5ff")
-	draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(W, 0), Vector2(W, 1080), Vector2(0, 1080)]),
-		PackedColorArray([top, top, bot, bot]))
-	var sun := Vector2(W - 210, 150)
-	for i in 12:
-		var a := deg_to_rad(i * 30 + t * 8)
-		draw_line(sun + Vector2(cos(a), sin(a)) * 95, sun + Vector2(cos(a), sin(a)) * 125, Color(1, 0.88, 0.4, 0.7), 18, true)
-	draw_circle(sun, 72, Color("ffe066"))
-	draw_circle(planet.position, R + 90, Color(1, 1, 1, 0.2))
-	draw_circle(planet.position, R + 46, Color(1, 1, 1, 0.28))
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:

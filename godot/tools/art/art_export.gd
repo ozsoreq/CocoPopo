@@ -6,7 +6,6 @@ extends RefCounted
 const SvgCanvas := preload("res://tools/art/svg_canvas.gd")
 const Gfx := preload("res://tools/art/gfx.gd")
 const PropArt := preload("res://tools/art/prop_art.gd")
-const SceneArt := preload("res://tools/art/scene_art.gd")
 const IconArt := preload("res://tools/art/icon_art.gd")
 const CharArt := preload("res://tools/art/char_art.gd")
 const Rules := preload("res://scripts/rules.gd")
@@ -50,12 +49,7 @@ func run() -> int:
 	for id in ["bed", "hbed"]:
 		export("blanket_" + id, func(g: Gfx): g.ol(5); PropArt.blanket(g, id))
 
-	# ---------------- backgrounds and map vignettes
-	for p in Rules.PLACES:
-		var id: String = p[0]
-		export("bg_" + id, func(g: Gfx): SceneArt.background(g, id, 2560, 1080))
-		export("place_" + id, func(g: Gfx): g.ol(5.5); SceneArt.place_icon(g, id))
-	export("cloud", func(g: Gfx): SceneArt.cloud(g, 0, 0, 1, WHITE))
+	# (place backgrounds, the world map and clouds are painted live by scripts/world/)
 
 	# ---------------- UI glyphs + emote bubbles
 	for i in IconArt.COUNT:

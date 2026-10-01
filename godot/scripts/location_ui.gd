@@ -100,13 +100,11 @@ func _update_popup() -> void:
 		for c in popup.get_children():
 			c.queue_free()
 		var defs := []
-		if s.is_char:
-			defs.append(["icon_11", "6c7bff", "edit"])
-			defs.append(["icon_12", "3cc5af", "emote"])
-		defs.append_array([["icon_13", "4fb3ff", "flip"], ["icon_5", "58b368", "big"], ["icon_6", "58b368", "small"]])
-		if not s.is_char:
-			defs.append(["icon_14", "8e7bff", "copy"])   # characters are unique, props can be copied
-		defs.append(["icon_10", "ff5c73", "delete"])
+		if s.is_char:  # characters: just dress-up and a hello
+			defs = [["icon_11", "6c7bff", "edit"], ["icon_12", "3cc5af", "emote"]]
+		else:
+			defs = [["icon_13", "4fb3ff", "flip"], ["icon_5", "58b368", "big"], ["icon_6", "58b368", "small"],
+				["icon_14", "8e7bff", "copy"], ["icon_10", "ff5c73", "delete"]]
 		for d in defs:
 			var b := RoundButton.new().setup(d[0], Color(d[1]), 36)
 			b.pressed.connect(_popup_action.bind(d[2]))

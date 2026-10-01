@@ -53,11 +53,9 @@ func setup(place: String) -> void:
 func _ready() -> void:
 	world = Node2D.new()
 	add_child(world)
-	var bg := Art.sprite("bg_" + loc)
+	var bg := Backdrop.new().setup(loc)
 	bg.z_index = -4000
 	world.add_child(bg)
-	if loc in ["park", "beach", "fair"]:
-		_add_clouds()
 	layer = Node2D.new()
 	world.add_child(layer)
 	fx = Node2D.new()
@@ -74,17 +72,6 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	load_state()
-
-func _add_clouds() -> void:
-	if loc in ["school", "cafe", "hospital", "market"]:
-		return
-	for i in 4:
-		var c := Art.sprite("cloud", Color(1, 1, 1, 0.95))
-		c.z_index = -3990
-		c.position = Vector2(randf() * WB, 70 + randf() * 160)
-		c.set_meta("speed", 8.0 + randf() * 10.0)
-		c.add_to_group("cloud")
-		world.add_child(c)
 
 func _layout() -> void:
 	var vs := get_viewport().get_visible_rect().size
@@ -161,11 +148,6 @@ func vis_x(frac: float) -> float:
 func _process(delta: float) -> void:
 	var dt := minf(delta, 0.05)
 	t += dt
-	for c in get_tree().get_nodes_in_group("cloud"):
-		if c.get_parent() == world:
-			c.position.x += float(c.get_meta("speed")) * dt
-			if c.position.x > WB + 200:
-				c.position.x = -200
 	var i := 0
 	while i < things.size():
 		var th := things[i]
