@@ -115,9 +115,11 @@ func remove_thing(th: Thing) -> void:
 		sel = null
 	th.queue_free()
 
-func make_char(l: Look, px: float, py: float) -> Character:
+func make_char(l: Look, px: float, py: float, cid := "") -> Character:
 	var c := Character.new(l)
 	c.x = px; c.y = py
+	c.sc = Character.SCENE_SCALE
+	c.cid = cid
 	return add_thing(c) as Character
 
 func make_prop(pid: String, px: float, py: float) -> Prop:
@@ -125,8 +127,27 @@ func make_prop(pid: String, px: float, py: float) -> Prop:
 	p.x = px; p.y = py
 	return add_thing(p) as Prop
 
-func spawn_char(l: Look) -> void:
-	var c := make_char(l, vis_x(0.5) + (randf() - 0.5) * 300, 420)
+## Finds the character with this identity in this place, or null.
+func char_by_cid(cid: String) -> Character:
+	if cid == "":
+		return null
+	for th in things:
+		if th.is_char and (th as Character).cid == cid:
+			return th as Character
+	return null
+
+## Brings a unique character here: if it is already here it just waves; if it is in another place it moves here.
+func summon(cid: String, look: Look) -> Character:
+	var c := char_by_cid(cid)
+	if c != null:
+		return c
+	var moved_look = Save.take_from_other_places(cid, loc)
+	if moved_look != null:
+		look = Look.make(moved_look)
+	return make_char(look, 0, 0, cid)
+
+func spawn_char(l: Look, cid := "") -> void:
+	var c := make_char(l, vis_x(0.5) + (randf() - 0.5) * 300, 420, cid)
 	c.pop = 0
 	sel = c
 	start_fall(c, 0, 0)
@@ -254,8 +275,9 @@ func update_thing(o: Thing, dt: float, dragging: bool) -> void:
 						o.x += sin((t + l.phase) * 2) * 10 * l.sc
 					o.y = l.y + st[0] * l.sc - (o as Character).look.hip_y() * o.sc - 4 - l.hop - l.lift * 36 * l.sc
 		Thing.LIE:
-			o.x = l.x + 158 * l.sc * o.slot
-			o.y = l.y + (Rules.bed(l.id) + 34) * l.sc - l.hop
+			# head on the pillow, body under the blanket
+			o.x = l.x + (-98 * l.sc + 211 * o.sc) * o.slot
+			o.y = l.y + Rules.bed(l.id) * l.sc + 34 * o.sc - l.hop
 		Thing.BATHE:
 			o.x = l.x - 30 * l.sc * (-1.0 if l.flip else 1.0)
 			o.y = l.y - 74 * l.sc - (o as Character).look.hip_y() * o.sc - l.hop
@@ -282,7 +304,7 @@ func update_thing(o: Thing, dt: float, dragging: bool) -> void:
 		Thing.HELD:
 			var h := l as Character
 			var dirh := -1.0 if h.flip else 1.0
-			var hs := hold_scale(o)
+			var hs := hold_scale(o) * h.sc
 			var hp := h.hand_pos()
 			o.x = h.x + hp.x * h.sc * dirh
 			o.y = h.y + h.dyo + hp.y * h.sc + o.bh * hs * (0.1 if h.hold_type == 2 else 0.45)
@@ -425,7 +447,7 @@ func update_char(c: Character, dt: float, dragging: bool) -> void:
 					c.pend = null
 					arrive(c, tgt)
 		else:
-			var step := minf(d, 270 * c.sc * dt)
+			var step := minf(d, (150 + 120 * c.sc) * dt)
 			c.x += dv.x / d * step; c.y += dv.y / d * step
 			if absf(dv.x) > 4: c.flip = dv.x < 0
 			c.walk_ph += dt * 11
@@ -995,8 +1017,11 @@ func thing_at(p: Vector2) -> Thing:
 	var best: Thing = null
 	var bz := -100000
 	for th in things:
-		if th.hit(p) and th.z_index > bz:
-			bz = th.z_index; best = th
+		var z := th.z_index
+		if th.is_char and th.state == Thing.SIT and th.link != null and th.link.is_char:
+			z = th.link.z_index + 1   # shoulder riders are grabbable even though drawn behind the head
+		if th.hit(p) and z > bz:
+			bz = z; best = th
 	return best
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -1050,6 +1075,8 @@ func on_up(p: Vector2) -> void:
 		var o := drag
 		drag = null
 		var prev := sel
+		if not moved and o.state == Thing.HELD and o.link != null and o.link.is_char:
+			o = o.link   # tapping what someone holds = tapping them (eat, strum, flash...)
 		if not moved:
 			if not o.is_char and prev != null and prev.is_char and prev != o and prev.state != Thing.HELD \
 					and o.state != Thing.HELD and things.has(prev) and walk_use(prev as Character, o):
@@ -1092,6 +1119,7 @@ func save_state() -> void:
 			"ct": th.contents, "ox": th.off_x}
 		if th.is_char:
 			r["look"] = (th as Character).look.to_array()
+			r["cid"] = (th as Character).cid
 		else:
 			r["id"] = th.id
 		recs.append(r)
@@ -1107,15 +1135,20 @@ func load_state() -> void:
 			var py := float(parts[2])
 			var th: Thing
 			if parts[0].begins_with("@"):
-				th = make_char(Look.preset(int(parts[0].substr(1))), px, py)
+				var pi := int(parts[0].substr(1))
+				var cid := "p%d" % pi
+				if Save.cid_anywhere(cid):
+					continue   # this character is visiting another place
+				th = make_char(Look.preset(pi), px, py, cid)
+				th.sc = float(parts[3]) * Character.SCENE_SCALE
 			else:
 				th = make_prop(parts[0], px, py)
-			th.sc = float(parts[3])
+				th.sc = float(parts[3])
 		return
 	for r in recs:
 		var th: Thing
 		if r["c"]:
-			th = make_char(Look.make(r["look"]), r["x"], r["y"])
+			th = make_char(Look.make(r["look"]), r["x"], r["y"], r.get("cid", ""))
 		else:
 			th = make_prop(r["id"], r["x"], r["y"])
 		th.sc = r["sc"]; th.flip = r["flip"]; th.slot = r["sl"]; th.pstate = r["ps"]; th.bites = r["bi"]

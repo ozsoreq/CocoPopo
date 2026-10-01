@@ -2,11 +2,13 @@ extends Node2D
 ## One tray card: a white rounded tile with a preview of a character or item.
 
 var pressed_amt := 0.0
+var here := false   # this character is already in the place
 var _s := 1.0
 var _label := ""
 var inner: Node2D
 
-func setup(kind: String, payload) -> void:
+func setup(kind: String, payload, is_here := false) -> void:
+	here = is_here
 	inner = Node2D.new()
 	inner.position = Vector2(100, 100)
 	add_child(inner)
@@ -24,7 +26,7 @@ func setup(kind: String, payload) -> void:
 			inner.add_child(plus)
 			_label = "Create"
 		"lib":
-			var cl := Character.new(Look.make(payload))
+			var cl := Character.new(Look.make(payload["look"]))
 			cl.y = 60; cl.sc = 0.38; cl.pop = 1
 			inner.add_child(cl)
 			cl.apply_visual(0.0)
@@ -49,11 +51,19 @@ func setup(kind: String, payload) -> void:
 	l.position = Vector2(0, 160)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(l)
+	var check := Node2D.new()
+	check.set_script(load("res://scripts/check_badge.gd"))
+	check.position = Vector2(176, 24)
+	check.name = "Check"
+	add_child(check)
 
 func _process(dt: float) -> void:
 	_s = lerpf(_s, 0.93 if pressed_amt > 0 else 1.0, minf(1, dt * 20))
 	scale = Vector2(_s, _s)
 	position.y = 94 + (1 - _s) * 100
+	var ck := get_node_or_null("Check")
+	if ck:
+		ck.visible = here
 	queue_redraw()
 
 func _draw() -> void:

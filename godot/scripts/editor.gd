@@ -119,10 +119,7 @@ func _randomize() -> void:
 	Sfx.play("tada")
 
 func _save_to_lib() -> void:
-	var lib: Array = Save.data.get("lib", [])
-	lib.append(work.to_array())
-	Save.data["lib"] = lib
-	Save.write()
+	Save.add_to_lib(work.to_array())
 	preview.do_emote(0)
 	preview.hop_v = 600
 	Sfx.play("spark")

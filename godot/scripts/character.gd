@@ -2,6 +2,12 @@ class_name Character
 extends Thing
 ## A cutout-rigged character: tinted SVG parts on a bone hierarchy, animated procedurally.
 
+## Characters in places are drawn at half the original size.
+const SCENE_SCALE := 0.5
+static var _shade_mat: ShaderMaterial
+
+var cid := ""         # identity: "p<preset>" or "l<library id>"; empty for one-offs
+
 var look: Look
 
 # behaviour state
@@ -158,10 +164,21 @@ func build() -> void:
 		r_grips.append(g)
 	r_grip.visible = false
 
+	_apply_shading(self)
+
 	r_emote = Sprite2D.new()
 	r_emote.z_index = 5
 	add_child(r_emote)
 	r_emote.visible = false
+
+func _apply_shading(n: Node) -> void:
+	if _shade_mat == null:
+		_shade_mat = ShaderMaterial.new()
+		_shade_mat.shader = load("res://scripts/char_shade.gdshader")
+	for c in n.get_children():
+		if c is Sprite2D:
+			(c as Sprite2D).material = _shade_mat
+		_apply_shading(c)
 
 func set_look(l: Look) -> void:
 	look = l
@@ -281,7 +298,7 @@ func apply_visual(t: float) -> void:
 		Art.set_art(r_emote, "emote_%d" % (emote % 7))
 		var a := back_ease(emote_t * 4)
 		var fo := maxf(0.0, (2.0 - emote_t) / 0.4) if emote_t > 1.6 else 1.0
-		var k := a * fo * 0.9 / Art.k
+		var k := a * fo * 0.9 / Art.k / clampf(sc * 1.6, 0.6, 1.6)
 		r_emote.scale = Vector2(k * (-1.0 if flip and state != LIE else 1.0), k)
 		r_emote.position = Vector2(0, -(bh if not sit else bh - 60) - 50 - sin(t * 5) * 4)
 		r_emote.rotation = 0 if state != LIE else deg_to_rad(90 * slot)

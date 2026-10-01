@@ -103,8 +103,10 @@ func _update_popup() -> void:
 		if s.is_char:
 			defs.append(["icon_11", "6c7bff", "edit"])
 			defs.append(["icon_12", "3cc5af", "emote"])
-		defs.append_array([["icon_13", "4fb3ff", "flip"], ["icon_5", "58b368", "big"], ["icon_6", "58b368", "small"],
-			["icon_14", "8e7bff", "copy"], ["icon_10", "ff5c73", "delete"]])
+		defs.append_array([["icon_13", "4fb3ff", "flip"], ["icon_5", "58b368", "big"], ["icon_6", "58b368", "small"]])
+		if not s.is_char:
+			defs.append(["icon_14", "8e7bff", "copy"])   # characters are unique, props can be copied
+		defs.append(["icon_10", "ff5c73", "delete"])
 		for d in defs:
 			var b := RoundButton.new().setup(d[0], Color(d[1]), 36)
 			b.pressed.connect(_popup_action.bind(d[2]))
@@ -141,9 +143,9 @@ func _popup_action(a: String) -> void:
 		"flip":
 			s.flip = not s.flip
 		"big":
-			s.sc = minf(2.4, s.sc * 1.15)
+			s.sc = minf(2.4 * (Character.SCENE_SCALE if s.is_char else 1.0), s.sc * 1.15)
 		"small":
-			s.sc = maxf(0.4, s.sc / 1.15)
+			s.sc = maxf(0.4 * (Character.SCENE_SCALE if s.is_char else 1.0), s.sc / 1.15)
 		"copy":
 			var n: Thing
 			if s.is_char:

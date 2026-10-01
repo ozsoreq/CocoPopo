@@ -47,9 +47,10 @@ func hit(p: Vector2) -> bool:
 		var ly := (p.y - y) / sc
 		return lx >= -20 and lx <= 380 and ly >= -120 and ly <= 100
 	var s := sc * draw_scale()
+	var pad := 22.0 / s if is_char else 0.0   # small characters are easier to grab
 	var lx2 := (p.x - x) / s
 	var ly2 := (p.y - y) / s
-	return lx2 >= -bw / 2 and lx2 <= bw / 2 and ly2 >= -bh and ly2 <= 0
+	return lx2 >= -bw / 2 - pad and lx2 <= bw / 2 + pad and ly2 >= -bh - pad and ly2 <= pad
 
 func draw_scale() -> float:
 	return 1.0

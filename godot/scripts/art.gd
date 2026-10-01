@@ -26,6 +26,7 @@ func tex(name: String, scale_mul := 1.0) -> Texture2D:
 	if src.is_empty() or img.load_svg_from_string(src, k * scale_mul) != OK:
 		push_warning("missing art: " + name)
 		return null
+	img.generate_mipmaps()
 	var t := ImageTexture.create_from_image(img)
 	_cache[key] = t
 	return t
@@ -44,6 +45,7 @@ func set_art(s: Sprite2D, name: String, scale_mul := 1.0) -> void:
 	var m: Array = manifest[name]
 	var kk := k * scale_mul
 	s.texture = tex(name, scale_mul)
+	s.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	s.centered = false
 	s.offset = Vector2(m[0], m[1]) * kk
 	s.scale = Vector2.ONE / kk

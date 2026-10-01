@@ -90,7 +90,7 @@ func _rebuild() -> void:
 	if tab == 1:
 		cards.append(["create", null])
 		cards.append(["new", null])
-		var lib: Array = Save.data.get("lib", [])
+		var lib: Array = Save.lib()
 		for i in range(lib.size() - 1, -1, -1):
 			cards.append(["lib", lib[i]])
 		for i in Look.PRESETS.size():
@@ -104,7 +104,7 @@ func _rebuild() -> void:
 		node.set_script(load("res://scripts/card.gd"))
 		node.position = Vector2(X0 + i * (CARD + GAP), 94)
 		strip.add_child(node)
-		node.setup(cards[i][0], cards[i][1])
+		node.setup(cards[i][0], cards[i][1], loc.char_by_cid(_cid(i)) != null)
 
 func _process(dt: float) -> void:
 	var target := 1.0 if tab != 0 else 0.0
@@ -165,41 +165,69 @@ func _gui_input(e: InputEvent) -> void:
 				_decided = true
 				_press_card(false)
 				if _card >= 0 and d.y < -20 and absf(d.y) > absf(d.x) * 0.8:
-					var th := _spawn(_card)
+					var res := _spawn(_card)
+					var th: Thing = res[0]
 					if th != null:
+						if res[1]:
+							loc.pick_up(th)
 						_handoff = true
 						loc.begin_external_drag(th, e.global_position)
+						_mark_here()
 			if _decided and not _handoff:
 				scroll -= e.position.x - _last.x
 				scroll_v = -(e.position.x - _last.x) * 40
 		_last = e.position
 		accept_event()
 
+func _mark_here() -> void:
+	for i in cards.size():
+		if i < strip.get_child_count():
+			strip.get_child(i).set("here", loc.char_by_cid(_cid(i)) != null)
+
 func _press_card(on: bool) -> void:
 	if _card >= 0 and _card < strip.get_child_count():
 		strip.get_child(_card).pressed_amt = 1.0 if on else 0.0
 
-func _spawn(i: int) -> Thing:
+func _cid(i: int) -> String:
+	var c: Array = cards[i]
+	match c[0]:
+		"char": return "p%d" % c[1]
+		"lib": return "l" + str(c[1]["id"])
+	return ""
+
+## Returns [thing, already_here]
+func _spawn(i: int) -> Array:
 	var c: Array = cards[i]
 	match c[0]:
 		"create":
-			return null
+			return [null, false]
 		"new":
-			return loc.make_char(Look.random_look(), 0, 0)
-		"lib":
-			return loc.make_char(Look.make(c[1]), 0, 0)
-		"char":
-			return loc.make_char(Look.preset(c[1]), 0, 0)
+			return [loc.make_char(Look.random_look(), 0, 0), false]
+		"lib", "char":
+			var cid := _cid(i)
+			var here := loc.char_by_cid(cid) != null
+			var look := Look.make(c[1]["look"]) if c[0] == "lib" else Look.preset(c[1])
+			return [loc.summon(cid, look), here]
 		_:
-			return loc.make_prop(c[1], 0, 0)
+			return [loc.make_prop(c[1], 0, 0), false]
 
 func _tap_card(i: int) -> void:
 	if cards[i][0] == "create":
 		loc.new_char.emit()
 		return
-	var th := _spawn(i)
+	var res := _spawn(i)
+	var th: Thing = res[0]
 	if th == null:
 		return
+	if res[1]:
+		# already in this place: say hello instead of making a twin
+		loc.sel = th
+		th.hop_v = 600
+		(th as Character).do_emote(6)
+		loc.fx.burst(Vector2(th.x, th.y - th.bh * th.sc * 0.6), 10, Color("ffe066"), 2, 300)
+		Sfx.play("squeak")
+		return
+	_mark_here()
 	th.x = loc.vis_x(0.5) + (randf() - 0.5) * 500
 	th.y = 420 + randf() * 100
 	th.pop = 0

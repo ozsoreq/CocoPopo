@@ -76,10 +76,7 @@ func _set_screen_ui_visible(v: bool) -> void:
 			c.visible = v
 
 func _add_to_lib(l: Look) -> void:
-	var lib: Array = Save.data.get("lib", [])
-	lib.append(l.to_array())
-	Save.data["lib"] = lib
-	Save.write()
+	Save.add_to_lib(l.to_array())
 	Sfx.play("tada")
 
 func go_place(place: String) -> void:
@@ -91,8 +88,15 @@ func go_place(place: String) -> void:
 	var l := Location.new()
 	l.setup(place)
 	l.go_map.connect(go_map)
-	l.edit_char.connect(func(c: Character): open_editor(c.look, "Edit character", func(nl: Look): c.set_look(nl); c.hop_v = 600))
-	l.new_char.connect(func(): open_editor(Look.random_look(), "New character", func(nl: Look): _add_to_lib(nl); l.spawn_char(nl)))
+	l.edit_char.connect(func(c: Character): open_editor(c.look, "Edit character", func(nl: Look):
+		c.set_look(nl); c.hop_v = 600
+		if c.cid.begins_with("l"): Save.update_lib(c.cid, nl.to_array()))
+	)
+	l.new_char.connect(func(): open_editor(Look.random_look(), "New character", func(nl: Look):
+		var cid := Save.add_to_lib(nl.to_array())
+		Sfx.play("tada")
+		l.spawn_char(nl, cid))
+	)
 	_swap(l)
 	await _fade_to(0.0)
 	busy = false

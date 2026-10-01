@@ -62,6 +62,9 @@ func drag(a: Vector2, b: Vector2) -> void:
 	l.on_up(b)
 	await frames(2)
 
+func bodyp(c: Thing) -> Vector2:
+	return Vector2(c.x, c.y + c.dyo - c.bh * c.sc * 0.45)
+
 func check(name: String, ok: bool) -> void:
 	print(("PASS " if ok else "FAIL ") + name)
 
@@ -78,7 +81,7 @@ func smoke() -> void:
 	var tub := l.make_prop("tub", cx + 400, 545)
 	var table := l.make_prop("table", cx + 500, 965)
 	var apple := l.make_prop("apple", cx + 100, 965)
-	var cake := l.make_prop("cake", cx - 100, 965)
+	var cake := l.make_prop("cake", cx - 760, 965)
 	var kid := l.make_char(Look.preset(1), cx - 200, 970)
 	var mom := l.make_char(Look.preset(6), cx + 250, 970)
 	var fridge := l.make_prop("fridge", cx + 800, 965)
@@ -86,49 +89,49 @@ func smoke() -> void:
 		th.pop = 1
 		if th.is_char: (th as Character).idle_t = 9999
 	await frames(5)
-	await drag(Vector2(kid.x, kid.y - 150), Vector2(sofa.x - 86, sofa.y - 150))
+	await drag(bodyp(kid), Vector2(sofa.x - 86, sofa.y - 150))
 	await frames(10)
 	check("sit on sofa", kid.state == Thing.SIT and kid.link == sofa)
 	await shot("t_sit")
-	await drag(Vector2(kid.x, kid.y - 150), Vector2(bed.x + 20, bed.y - 180))
+	await drag(bodyp(kid), Vector2(bed.x + 20, bed.y - 180))
 	await frames(10)
 	check("sleep in bed", kid.state == Thing.LIE and kid.link == bed)
 	await shot("t_sleep")
 	await drag(Vector2(kid.x - 150, kid.y - 20), Vector2(cx - 200, 820))
 	await frames(40)
 	check("out of bed and fell to floor", kid.state == Thing.FREE and kid.y > 900)
-	await drag(Vector2(apple.x, apple.y - 40), Vector2(kid.x, kid.y - 170))
+	await drag(Vector2(apple.x, apple.y - 40), bodyp(kid))
 	await frames(10)
 	check("hold apple (auto bite)", kid.held == apple and apple.bites == 1)
 	for i in 2:
-		await tap(Vector2(kid.x, kid.y - 300))
+		await tap(bodyp(kid))
 		await frames(30)
 	check("ate apple", kid.held == null and not is_instance_valid(apple))
 	await drag(Vector2(cake.x, cake.y - 40), Vector2(table.x + 10, table.y - 400))
 	await frames(60)
 	check("cake on table", cake.state == Thing.ON_TOP and cake.link == table)
-	await drag(Vector2(mom.x, mom.y - 150), Vector2(tub.x, tub.y - 150))
+	await drag(bodyp(mom), bodyp(tub))
 	await frames(10)
 	check("bathe", mom.state == Thing.BATHE)
 	await shot("t_bath")
 	var juice := l.make_prop("juice", cx + 650, 1000)
 	juice.pop = 1
 	await frames(3)
-	await drag(Vector2(juice.x, juice.y - 40), Vector2(fridge.x, fridge.y - 200))
+	await drag(Vector2(juice.x, juice.y - 40), bodyp(fridge))
 	await frames(5)
 	check("juice into fridge", fridge.contents.has("juice"))
-	await drag(Vector2(mom.x, mom.y - 150), Vector2(kid.x + 30, kid.y - 170))
+	await drag(bodyp(mom), bodyp(kid) + Vector2(30, 0))
 	await frames(5)
 	check("hug", mom.hug_t > 0 and kid.hug_t > 0)
 	await shot("t_hug")
 	await frames(80)
-	await drag(Vector2(kid.x, kid.y - 150), Vector2(mom.x, mom.y + (mom.look.neck_y() - 90) * mom.sc))
+	await drag(bodyp(kid), Vector2(mom.x, mom.y + (mom.look.neck_y() - 90) * mom.sc))
 	await frames(10)
 	check("shoulder ride", kid.state == Thing.SIT and kid.link == mom)
 	await shot("t_shoulder")
-	await drag(Vector2(kid.x, kid.y - 150), Vector2(cx - 150, 400))
+	await drag(bodyp(kid), Vector2(cx - 150, 400))
 	await frames(40)
-	await tap(Vector2(kid.x, kid.y - 200))
+	await tap(bodyp(kid))
 	await tap(Vector2(sofa.x, sofa.y - 60))
 	for i in 600:
 		if kid.state == Thing.SIT:
@@ -157,6 +160,40 @@ func smoke() -> void:
 	m.spin_by(1)
 	await frames(60)
 	check("world spins", m.focus == 1)
+	# characters are unique: tapping a preset card twice gives one character, and it can move between places
+	main.go_place("park")
+	await frames(40)
+	var pl := loc()
+	for th in pl.things.duplicate():
+		if th.is_char: pl.remove_thing(th)
+	pl.ui._toggle_tray(1)
+	await frames(20)
+	var idx := -1
+	for i in pl.ui.tray.cards.size():
+		if pl.ui.tray.cards[i][0] == "char" and pl.ui.tray.cards[i][1] == 4:
+			idx = i
+	pl.ui.tray._tap_card(idx)
+	await frames(30)
+	pl.ui.tray._tap_card(idx)
+	await frames(30)
+	var nanas := 0
+	for th in pl.things:
+		if th.is_char and (th as Character).cid == "p4": nanas += 1
+	check("same character can't be spawned twice", nanas == 1)
+	pl.save_state()
+	main.go_place("beach")
+	await frames(40)
+	var bl := loc()
+	bl.ui._toggle_tray(1)
+	await frames(20)
+	bl.ui.tray._tap_card(idx)
+	await frames(30)
+	var here := bl.char_by_cid("p4") != null
+	var left := true
+	for r in Save.data.get("park", []):
+		if r.get("cid", "") == "p4": left = false
+	check("character moves between places (no twin left behind)", here and left)
+	await shot("t_halfsize")
 
 func editor_test() -> void:
 	Save.data.erase("lib")
