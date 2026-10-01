@@ -1,5 +1,7 @@
 build/
 preview-out/
 *.keystore
+!godot/android/cocopopo-release.keystore
 *.class
 release/*.idsig
+godot/.godot/

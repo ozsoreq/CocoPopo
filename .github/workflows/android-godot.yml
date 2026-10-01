@@ -1,0 +1,71 @@
+name: Build Android APK (Godot)
+
+on:
+  push:
+    paths:
+      - "godot/**"
+      - ".github/workflows/android-godot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download Godot 4.3 and export templates
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          unzip -q Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q Godot_v4.3-stable_export_templates.tpz
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
+
+      - name: Point Godot at the Android SDK and Java
+        run: |
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.3.tres <<EOT
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOT
+          cat ~/.config/godot/editor_settings-4.3.tres
+
+      - name: Import and export the APK
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ github.workspace }}/godot/android/cocopopo-release.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: cocopopo
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: cocopopo
+        run: |
+          cd godot
+          ../Godot_v4.3-stable_linux.x86_64 --headless --import --path . || true
+          mkdir -p ../release
+          ../Godot_v4.3-stable_linux.x86_64 --headless --path . --export-release "Android" ../release/CocoPopo.apk
+          ls -la ../release
+          test -s ../release/CocoPopo.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CocoPopo-apk
+          path: release/CocoPopo.apk
+
+      - name: Publish as the "latest" download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: cocopopo-latest
+          name: CocoPopo (latest Godot build)
+          body: "Latest APK built from ${{ github.ref_name }} @ ${{ github.sha }}. Install CocoPopo.apk on Android 5.0+."
+          files: release/CocoPopo.apk
+          prerelease: false
+          make_latest: true

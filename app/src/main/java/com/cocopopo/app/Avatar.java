@@ -131,7 +131,7 @@ final class Avatar {
         ov(c, 0, 82, 17, 19, skin);
     }
 
-    private static void skirt(Canvas c, int col) {
+    static void skirt(Canvas c, int col) {
         PA.reset();
         PA.moveTo(-58, -110); PA.lineTo(58, -110); PA.lineTo(80, -54); PA.quadTo(0, -44, -80, -54); PA.close();
         path(c, PA, col);
@@ -171,7 +171,7 @@ final class Avatar {
     }
 
     // ------------------------------------------------------------------ torso
-    private static void torso(Canvas c, Look l, int skin, int topC, int pants) {
+    static void torso(Canvas c, Look l, int skin, int topC, int pants) {
         switch (l.top) {
             case 0: // tee
                 rr(c, -58, -196, 116, 112, 38, topC);
@@ -228,7 +228,7 @@ final class Avatar {
         }
     }
 
-    private static void neckline(Canvas c, int skin, int topC) {
+    static void neckline(Canvas c, int skin, int topC) {
         ov(c, 0, -194, 26, 15, skin);
         arc(c, 0, -194, 26, 15, 0, 180, 5, dk(topC, 0.15f));
     }
@@ -238,6 +238,13 @@ final class Avatar {
     static final int F_NONE = 0, F_HAPPY = 1, F_LAUGH = 2, F_WOW = 3, F_YUM = 4, F_SAD = 5, F_SLEEPY = 6, F_LOVE = 7, F_SCARED = 8;
 
     private static void head(Canvas c, Look l, Pose p, int skin, int skinD, int hair) {
+        headBase(c, l, skin, skinD);
+        face(c, l, p, skin, hair);
+        hairFront(c, l, hair);
+        accessory(c, l, hair);
+    }
+
+    static void headBase(Canvas c, Look l, int skin, int skinD) {
         int shape = l.head % 3;
         float earX = shape == 2 ? 97 : 88;
         ci(c, -earX, -256, 17, skin);
@@ -250,7 +257,9 @@ final class Avatar {
         else if (shape == 2) ov(c, 0, -258, 99, 78, skin);
         else ov(c, 0, -264, 90, 84, skin);
         Gfx.shade = sh;
+    }
 
+    static void face(Canvas c, Look l, Pose p, int skin, int hair) {
         int face = p.sleep ? F_SLEEPY : p.face;
         // cheeks
         int blush = face == F_LOVE || face == F_LAUGH ? 150 : 85;
@@ -392,12 +401,10 @@ final class Avatar {
             }
         }
 
-        hairFront(c, l, hair);
-        accessory(c, l, hair);
     }
 
     // ------------------------------------------------------------------ hair
-    private static void hairBack(Canvas c, Look l, int hair) {
+    static void hairBack(Canvas c, Look l, int hair) {
         int hd = dk(hair, 0.1f);
         switch (l.hairStyle) {
             case 1: ov(c, 0, -268, 94, 86, hair); break;
@@ -451,7 +458,7 @@ final class Avatar {
         }
     }
 
-    private static void hairFront(Canvas c, Look l, int hair) {
+    static void hairFront(Canvas c, Look l, int hair) {
         switch (l.hairStyle) {
             case 0: return;
             case 5: // afro hairline
@@ -486,7 +493,7 @@ final class Avatar {
     }
 
     /** Hair cap over the forehead. Variants change the bottom edge. */
-    private static void fringe(Canvas c, int hair, int v) {
+    static void fringe(Canvas c, int hair, int v) {
         hp.reset();
         hp.moveTo(-94, -262);
         hp.cubicTo(-108, -382, 108, -382, 94, -262);
@@ -520,7 +527,7 @@ final class Avatar {
     }
 
     // ------------------------------------------------------------------ accessories
-    private static void accessory(Canvas c, Look l, int hair) {
+    static void accessory(Canvas c, Look l, int hair) {
         int ac = Look.CLOTH[l.accColor];
         switch (l.acc) {
             case 1: // round glasses
