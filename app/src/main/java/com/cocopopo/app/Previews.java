@@ -50,13 +50,18 @@ public final class Previews {
                 public void photo() {}
                 public void haptic() {}
                 public void quit() {}
+            public void sound(int id) {}
             });
             g.layout(w, h);
             String[] a = name.substring(2).split("_");
             if (a[0].equals("scene")) { g.screen = Game.SCENE; g.enterScene(a[1]); }
             if (a[0].equals("editor")) { g.screen = Game.EDITOR; g.debugEditor(a.length > 1 ? Integer.parseInt(a[1]) : 0); }
+            if (a[0].equals("life")) {
+                g.screen = Game.SCENE; g.enterScene("home");
+                g.debugLife();
+            }
             if (a[0].equals("tray")) { g.screen = Game.SCENE; g.enterScene(a[1]); g.debugTray(Integer.parseInt(a[2])); }
-            for (int i = 0; i < 40; i++) g.update(.05f);
+            for (int i = 0; i < 40; i++) g.update(.0503f);
             g.draw(c);
             return;
         }
@@ -83,68 +88,105 @@ public final class Previews {
             public void photo() {}
             public void haptic() {}
             public void quit() {}
+            public void sound(int id) {}
         };
         Game g = new Game(host);
         g.layout(w, h);
         StringBuilder log = new StringBuilder();
         float s = g.scale;
         for (int i = 0; i < 10; i++) frame(g, c);
-        // tap "Cozy Home" tile
-        tap(g, c, 480 * s, 520 * s);
+        // spin the world by dragging, let it settle, then press play
+        g.touch(0, 900 * s, 700 * s); frame(g, c);
+        for (int i = 1; i <= 10; i++) { g.touch(1, (900 - i * 45) * s, 700 * s); frame(g, c); }
+        g.touch(2, 450 * s, 700 * s);
+        for (int i = 0; i < 120; i++) frame(g, c);
+        log.append("world spun, focus=" + g.debugFocus() + "\n");
+        tap(g, c, g.W / 2 * s, 985 * s);
         for (int i = 0; i < 40; i++) frame(g, c);
-        log.append("screen=" + g.screen + " loc=" + g.loc + " objs=" + g.objs.size() + "\n");
-        // open items tray, tap first card -> spawn
-        tap(g, c, 250 * s, (Game.H - 92) * s);
-        for (int i = 0; i < 30; i++) frame(g, c);
-        int before = g.objs.size();
-        tap(g, c, 520 * s, 900 * s);
+        log.append("entered: screen=" + g.screen + " loc=" + g.loc + "\n");
+
+        // a clean test room in the home
+        g.screen = Game.SCENE; g.enterScene("home");
+        g.objs.clear();
+        Obj sofa = Obj.prop("sofa", 400, 965); g.objs.add(sofa);
+        Obj bed = Obj.prop("bed", 400, 530); g.objs.add(bed);
+        Obj table = Obj.prop("table", 1500, 965); g.objs.add(table);
+        Obj apple = Obj.prop("apple", 1100, 965); g.objs.add(apple);
+        Obj ball = Obj.prop("ball", 1250, 1040); g.objs.add(ball);
+        Obj kid = Obj.character(Look.PRESETS[1].copy(), 800, 970); g.objs.add(kid);
+        for (Obj o : g.objs) o.pop = 1;
+        for (int i = 0; i < 5; i++) frame(g, c);
+
+        drag(g, c, kid.x, kid.y - 150, 400 - 86 + 5, 960 - 150);
+        for (int i = 0; i < 20; i++) frame(g, c);
+        log.append("sit on sofa: " + (kid.state == Obj.SIT && kid.link == sofa) + "\n");
+
+        drag(g, c, kid.x, kid.y - 150, 420, 480 - 150);
+        for (int i = 0; i < 20; i++) frame(g, c);
+        log.append("sleep in bed: " + (kid.state == Obj.LIE && kid.link == bed) + "\n");
+
+        drag(g, c, kid.x - 200, kid.y - 60, 800, 970 - 150);
+        for (int i = 0; i < 40; i++) frame(g, c);
+        log.append("picked out of bed & fell to floor: state=" + kid.state + " y=" + (int) kid.y + "\n");
+
+        drag(g, c, apple.x, apple.y - 40, kid.x, kid.y - 150);
         for (int i = 0; i < 10; i++) frame(g, c);
-        log.append("spawned by tap: " + (g.objs.size() - before) + "\n");
-        // drag a card upward into the scene
-        before = g.objs.size();
-        g.touch(0, 750 * s, 900 * s); frame(g, c);
-        for (int i = 1; i <= 10; i++) { g.touch(1, 750 * s, (900 - i * 30) * s); frame(g, c); }
-        g.touch(2, 750 * s, 600 * s); frame(g, c);
-        log.append("spawned by drag: " + (g.objs.size() - before) + "\n");
-        // scroll tray sideways
-        g.touch(0, 900 * s, 900 * s); frame(g, c);
-        for (int i = 1; i <= 10; i++) { g.touch(1, (900 - i * 40) * s, 905 * s); frame(g, c); }
-        g.touch(2, 500 * s, 905 * s);
-        for (int i = 0; i < 20; i++) frame(g, c);
-        // drag an existing object
-        Obj o = g.objs.get(0); for (Obj q : g.objs) if (q.isChar) { o = q; break; }
-        g.back(); for (int i = 0; i < 30; i++) frame(g, c); o.y = 1060; o.x = 900; for (int i = 0; i < 3; i++) frame(g, c); float ox = o.x, oy = o.y;
-        g.touch(0, o.x * s, (o.y - 100) * s); frame(g, c);
-        for (int i = 1; i <= 8; i++) { g.touch(1, (o.x + 20) * s, (oy - 20 - i * 10) * s); frame(g, c); }
-        g.touch(2, (o.x) * s, (oy - 100) * s);
-        for (int i = 0; i < 20; i++) frame(g, c);
-        log.append("dragged: " + (o.x != ox || o.y != oy) + " moved=" + g.debugMovedCount(ox, oy) + "\n");
-        // camera + back to map
+        log.append("holding apple: " + (kid.held == apple && apple.state == Obj.HELD) + "\n");
+
+        // save + reload keeps the apple in hand
         g.pause();
-        log.append("saved scene: " + (store.get("scene_home") != null) + "\n");
-        g.back(); g.back();
-        for (int i = 0; i < 40; i++) frame(g, c);
-        log.append("screen after back=" + g.screen + "\n");
-        // editor
-        tap(g, c, 100 * s, 92 * s);
-        for (int i = 0; i < 40; i++) frame(g, c);
-        log.append("screen=" + g.screen + "\n");
-        for (int tab = 0; tab < 5; tab++) { g.debugEditor(tab); for (int i = 0; i < 3; i++) frame(g, c); }
-        tap(g, c, (g.W - 96) * s, 90 * s);
-        for (int i = 0; i < 40; i++) frame(g, c);
-        log.append("after done screen=" + g.screen + " lib=" + g.lib.size() + " libSaved=" + store.get("lib") + "\n");
-        // every scene renders
-        for (Scenes.Loc l : Scenes.ALL) { g.screen = Game.SCENE; g.enterScene(l.id); for (int i = 0; i < 5; i++) frame(g, c); }
-        log.append("all scenes ok\n");
-        // reload persisted home
         g.enterScene("home");
-        log.append("reloaded objs=" + g.objs.size() + "\n");
+        Obj kid2 = null;
+        for (Obj o : g.objs) if (o.isChar) kid2 = o;
+        log.append("reload keeps holding: " + (kid2 != null && kid2.held != null) + "\n");
+        for (int i = 0; i < 5; i++) frame(g, c);
+        for (int b = 0; b < 3; b++) { tap(g, c, kid2.x, kid2.y - 300); for (int i = 0; i < 30; i++) frame(g, c); }
+        log.append("ate apple: " + (kid2.held == null) + " objs=" + g.objs.size() + "\n");
+
+        Obj tb = null, bl = null;
+        for (Obj o : g.objs) { if ("table".equals(o.prop)) tb = o; if ("ball".equals(o.prop)) bl = o; }
+        Obj cake = Obj.prop("cake", 1000, 965); cake.pop = 1; g.objs.add(cake);
+        frame(g, c);
+        drag(g, c, cake.x, cake.y - 40, tb.x + 20, tb.y - 400);
+        for (int i = 0; i < 60; i++) frame(g, c);
+        log.append("cake on table: " + (cake.state == Obj.ON_TOP && cake.link == tb) + "\n");
+
+        float bx0 = bl.x;
+        tap(g, c, bl.x, bl.y - 40);
+        for (int i = 0; i < 90; i++) frame(g, c);
+        log.append("ball kicked & landed: moved=" + (Math.abs(bl.x - bx0) > 5) + " falling=" + bl.falling + "\n");
+
+        // walk to tap
+        tap(g, c, kid2.x, kid2.y - 300);
+        frame(g, c);
+        float kx = kid2.x;
+        tap(g, c, kid2.x + 400, 1000);
+        for (int i = 0; i < 20; i++) frame(g, c);
+        log.append("walking: " + (kid2.walking || Math.abs(kid2.x - kx) > 50) + "\n");
+
+        // let life run for a while in every place
+        for (Scenes.Loc l : Scenes.ALL) { g.enterScene(l.id); for (int i = 0; i < 400; i++) frame(g, c); }
+        log.append("all scenes ran 12s of life ok\n");
+        g.screen = Game.MAP; for (int i = 0; i < 30; i++) frame(g, c);
+        tap(g, c, (g.W - 110) * s, 640 * s);
+        for (int i = 0; i < 60; i++) frame(g, c);
+        log.append("arrow spin focus=" + g.debugFocus() + "\n");
         return log.toString();
+    }
+
+    private static void drag(Game g, Canvas c, float x0, float y0, float x1, float y1) {
+        float s = g.scale;
+        g.touch(0, x0 * s, y0 * s); frame(g, c);
+        for (int i = 1; i <= 12; i++) { g.touch(1, (x0 + (x1 - x0) * i / 12) * s, (y0 + (y1 - y0) * i / 12) * s); frame(g, c); }
+        for (int i = 0; i < 4; i++) { g.touch(1, x1 * s, y1 * s); frame(g, c); }
+        g.touch(2, x1 * s, y1 * s); frame(g, c);
     }
 
     private static void frame(Game g, Canvas c) { g.update(.03f); g.draw(c); }
 
     private static void tap(Game g, Canvas c, float x, float y) {
+        float s = g.scale;
+        if (x > g.W * s * 0 && false) return;
         g.touch(0, x, y); frame(g, c); g.touch(2, x, y); frame(g, c);
     }
 }

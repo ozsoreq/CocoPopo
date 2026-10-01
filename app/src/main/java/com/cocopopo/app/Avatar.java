@@ -22,6 +22,8 @@ final class Avatar {
         int topC = Look.CLOTH[l.topColor];
         int pants = Look.PANTS[l.bottom];
         float breathe = (float) Math.sin(p.t * 2.4f) * 2.2f;
+        float bob = -Math.abs((float) Math.sin(p.walkPh)) * 7 * p.walk - Math.abs((float) Math.sin(p.t * 8)) * 12 * p.dance;
+        if (p.sit) bob = 0;
 
         // ---- hair behind everything
         hairBack(c, l, hair);
@@ -30,20 +32,31 @@ final class Avatar {
         boolean dress = l.top == 3;
         float sw = p.swing * 14;
         for (int s = -1; s <= 1; s += 2) {
+            if (p.sit) {
+                // seated, seen from the front: short foreshortened legs, feet dangling
+                float kick = (float) Math.sin(p.t * 3 + s) * 3;
+                rr(c, s * 25 - 21, -104, 42, 46, 18, dress ? skin : pants);
+                rr(c, s * 25 - 19, -70, 38, 30 + kick, 14, dress ? skin : pants);
+                ov(c, s * 28, -36 + kick, 28, 15, SOLE);
+                ov(c, s * 28, -40 + kick, 27, 14, SHOE);
+                continue;
+            }
+            float lift = Math.max(0, (float) Math.sin(p.walkPh + (s > 0 ? Math.PI : 0))) * 18 * p.walk
+                + Math.max(0, (float) Math.sin(p.t * 8 + (s > 0 ? Math.PI : 0))) * 10 * p.dance;
             c.save();
-            c.translate(s * 25, -98);
+            c.translate(s * 25, -98 - lift + bob * .3f);
             c.rotate(s * sw);
             rr(c, -19, 0, 38, 74, 18, dress ? skin : pants);
             if (!dress) rr(c, -19, 0, 38, 14, 6, dk(pants, 0.1f));
             c.restore();
             // shoes
             float fx = s * 25 + s * sw * 1.3f;
-            ov(c, fx + s * 3, -15, 31, 17, SOLE);
-            ov(c, fx + s * 3, -20, 30, 16, SHOE);
+            ov(c, fx + s * 3, -15 - lift, 31, 17, SOLE);
+            ov(c, fx + s * 3, -20 - lift, 30, 16, SHOE);
         }
 
         c.save();
-        c.translate(0, breathe * 0.5f);
+        c.translate(0, breathe * 0.5f + bob);
 
         // ---- torso
         torso(c, l, skin, topC, pants);
@@ -53,7 +66,7 @@ final class Avatar {
         for (int s = -1; s <= 1; s += 2) {
             c.save();
             c.translate(s * 62, -178);
-            float ang = s * (14 + 150 * raise) + (float) Math.sin(p.t * 2.0f + s) * 4 * (1 - raise);
+            float ang = armAngle(p, s);
             c.rotate(-ang);
             int sleeve = l.top == 5 ? 0xFFFFFFFF : (l.top == 3 ? skin : topC);
             rr(c, -15, -8, 30, 84, 15, sleeve);
@@ -65,10 +78,34 @@ final class Avatar {
 
         // ---- neck + head
         c.save();
-        c.translate(0, breathe);
+        c.translate(p.look * 7, breathe + bob);
+        if (p.dance > 0) c.rotate((float) Math.sin(p.t * 8) * 7 * p.dance, 0, -200);
         rr(c, -19, -214, 38, 34, 12, skinD);
         head(c, l, p, skin, skinD, hair);
         c.restore();
+    }
+
+    /** Arm rotation in degrees for side s (-1 left, +1 right). */
+    static float armAngle(Pose p, int s) {
+        float raise = p.arm;
+        float a = 14 + 150 * raise + (float) Math.sin(p.t * 2.0f + s) * 4 * (1 - raise);
+        a += (float) Math.sin(p.walkPh + (s > 0 ? Math.PI : 0)) * 22 * p.walk;
+        if (p.dance > 0) a += (60 + (float) Math.sin(p.t * 8 + (s > 0 ? Math.PI : 0)) * 70) * p.dance;
+        if (s > 0 && p.wave > 0) a = a * (1 - p.wave) + (150 + (float) Math.sin(p.t * 14) * 24) * p.wave;
+        if (s > 0 && p.hold) a = p.arm > .5f ? a : 48;
+        return s * a;
+    }
+
+    /** Hand centre (right hand) in avatar-local coordinates, matching draw(). */
+    static float handX(Pose p) {
+        double a = Math.toRadians(armAngle(p, 1));
+        return 62 + 80 * (float) Math.sin(a);
+    }
+
+    static float handY(Pose p) {
+        double a = Math.toRadians(armAngle(p, 1));
+        float bob = p.sit ? 0 : -Math.abs((float) Math.sin(p.walkPh)) * 7 * p.walk - Math.abs((float) Math.sin(p.t * 8)) * 12 * p.dance;
+        return -178 + 80 * (float) Math.cos(a) + (float) Math.sin(p.t * 2.4f) * 1.1f + bob;
     }
 
     // ------------------------------------------------------------------ torso
@@ -147,9 +184,9 @@ final class Avatar {
         ov(c, 52, -236, 17, 11, al(0xFFFF6F8F, 85));
 
         // eyes
-        float blink = p.blink;
+        float blink = p.sleep ? 1 : p.blink;
         for (int s = -1; s <= 1; s += 2) {
-            float ex = s * 35, ey = -262;
+            float ex = s * 35 + p.look * 6, ey = -262;
             switch (l.eyes) {
                 case 0: { // round
                     float ry = 14 * (1 - 0.85f * blink);
@@ -191,6 +228,8 @@ final class Avatar {
 
         // mouth
         int m = p.mood >= 0 ? p.mood : l.mouth;
+        if (p.chew) m = Math.sin(p.t * 16) > 0 ? 3 : 2;
+        if (p.sleep) m = 3;
         float my = -222;
         switch (m) {
             case 0: // soft smile

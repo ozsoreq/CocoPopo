@@ -59,7 +59,21 @@ final class PropArt {
 
     private PropArt() {}
 
-    static void draw(Canvas c, String id, float t) {
+    static void draw(Canvas c, String id, float t) { draw(c, id, t, 0); }
+
+    /** Blanket drawn over a character sleeping in a bed. */
+    static void blanket(Canvas c, String id) {
+        if (id.equals("hbed")) {
+            rr(c, -60, -150, 228, 66, 22, 0xFF6DD3C8);
+            rr(c, -60, -150, 228, 18, 9, 0xFF8FE6DC);
+        } else {
+            rr(c, -60, -160, 238, 76, 26, 0xFF8E9BFF);
+            rr(c, -60, -160, 238, 22, 11, 0xFFA9B4FF);
+            for (int i = 0; i < 5; i++) ci(c, -24 + i * 44, -112, 6, 0xFFC8CEFF);
+        }
+    }
+
+    static void draw(Canvas c, String id, float t, int st) {
         switch (id) {
             case "bed":
                 rr(c, -176, -70, 24, 70, 8, WOOD_D); rr(c, 150, -70, 24, 70, 8, WOOD_D);
@@ -120,9 +134,16 @@ final class PropArt {
                 }
                 break;
             case "lamp":
+                if (st == 1) {
+                    float o = Gfx.olw; Gfx.ol(0);
+                    ci(c, 0, -230, 150, al(0xFFFFF2A0, 70));
+                    ci(c, 0, -230, 100, al(0xFFFFF2A0, 90));
+                    poly(c, al(0xFFFFF6C0, 120), -40, -250, 40, -250, 110, -20, -110, -20);
+                    Gfx.ol(o);
+                }
                 ov(c, 0, -6, 38, 10, 0xFF5B5470);
                 rr(c, -5, -250, 10, 244, 4, 0xFF6B6480);
-                poly(c, 0xFFFFD86B, -50, -250, 50, -250, 34, -310, -34, -310);
+                poly(c, st == 1 ? 0xFFFFF09A : 0xFFFFD86B, -50, -250, 50, -250, 34, -310, -34, -310);
                 rr(c, -50, -258, 100, 12, 6, 0xFFFFB93D);
                 ov(c, 0, -240, 40, 8, al(0xFFFFF2B0, 110));
                 break;
@@ -130,13 +151,22 @@ final class PropArt {
                 rr(c, -120, -76, 240, 76, 12, WOOD);
                 rr(c, -100, -62, 90, 22, 6, WOOD_D); rr(c, 10, -62, 90, 22, 6, WOOD_D);
                 rr(c, -112, -226, 224, 150, 16, 0xFF2B2735);
-                rr(c, -102, -216, 204, 130, 10, 0xFF8FD8FF);
-                ci(c, 50, -170, 20, 0xFFFFE066);
-                poly(c, 0xFF7ED957, -102, -86, -30, -150, 20, -86);
-                poly(c, 0xFF5BBF4C, -40, -86, 30, -136, 102, -86);
+                tvScreen(c, st, t);
                 rr(c, -20, -80, 40, 6, 3, 0xFF4B4660);
                 break;
             case "fridge":
+                if (st == 1) {
+                    rr(c, -88, -350, 176, 350, 20, 0xFFE3F4FF);
+                    rr(c, -76, -338, 152, 326, 12, 0xFFFFFDF2);
+                    for (int r = 0; r < 3; r++) rr(c, -76, -250 + r * 80, 152, 8, 3, 0xFFB7D6EA);
+                    ci(c, -40, -270, 20, 0xFFFF4D5E); ci(c, 0, -268, 18, 0xFF7ED957); rr(c, 22, -300, 34, 48, 8, 0xFFFFFFFF);
+                    rr(c, -56, -220, 40, 46, 8, 0xFFFFC93C); ov(c, 26, -196, 32, 20, 0xFFFF9EC4);
+                    rr(c, -50, -132, 100, 40, 12, 0xFF7ED957); ci(c, 40, -110, 16, 0xFFFF9A3D);
+                    pp.reset(); pp.moveTo(-88, -350); pp.lineTo(-150, -320); pp.lineTo(-150, -20); pp.lineTo(-88, 0); pp.close();
+                    path(c, pp, 0xFFD2EAF8);
+                    rr(c, -140, -230, 10, 70, 5, 0xFF8AA6BC);
+                    break;
+                }
                 rr(c, -88, -350, 176, 350, 20, 0xFFE3F4FF);
                 rr(c, -88, -350, 176, 350, 20, 0xFFE3F4FF);
                 ln(c, -84, -240, 84, -240, 6, 0xFFB7D6EA);
@@ -173,6 +203,15 @@ final class PropArt {
                 rr(c, -70, -138, 140, 84, 8, 0xFF8FA0B8);
                 for (int i = 0; i < 3; i++) ci(c, -50 + i * 50, -180, 9, 0xFF6B6480);
                 rr(c, -82, -228, 70, 14, 7, 0xFFFFFFFF);
+                if (st == 1) {
+                    rr(c, 10, -280, 80, 56, 14, 0xFFFF6F61);
+                    rr(c, 2, -286, 96, 14, 7, 0xFFE0564B);
+                    for (int i = 0; i < 3; i++) {
+                        float sy = (t * 60 + i * 30) % 90;
+                        ci(c, 30 + i * 20 + (float) Math.sin(t * 3 + i) * 6, -300 - sy, 10 - sy / 12, al(0xFFFFFFFF, (int) (200 - sy * 2)));
+                    }
+                    rr(c, -70, -138, 140, 84, 8, 0xFFFF9A5C);
+                }
                 break;
             case "desk":
                 rr(c, -100, -130, 14, 130, 5, 0xFF8A93A8); rr(c, 86, -130, 14, 130, 5, 0xFF8A93A8);
@@ -435,6 +474,15 @@ final class PropArt {
                 ci(c, 24, -112, 12, 0xFFFFE066);
                 break;
             case "gift":
+                if (st == 1) {
+                    rr(c, -56, -90, 112, 90, 8, 0xFFB67CFF);
+                    rr(c, -46, -90, 92, 16, 6, 0xFF7A4BC2);
+                    rr(c, -10, -90, 20, 90, 3, 0xFFFFD43B);
+                    c.save(); c.rotate(-28, -60, -100);
+                    rr(c, -62, -132, 124, 30, 8, 0xFF9B5CF0);
+                    c.restore();
+                    break;
+                }
                 rr(c, -56, -90, 112, 90, 8, 0xFFB67CFF);
                 rr(c, -62, -112, 124, 30, 8, 0xFF9B5CF0);
                 rr(c, -10, -112, 20, 112, 3, 0xFFFFD43B);
@@ -548,6 +596,35 @@ final class PropArt {
                 break;
             default:
                 rr(c, -40, -80, 80, 80, 12, 0xFFB0BED0);
+                break;
+        }
+    }
+
+    private static void tvScreen(Canvas c, int st, float t) {
+        switch (st) {
+            case 1: // off
+                rr(c, -102, -216, 204, 130, 10, 0xFF3A3448);
+                ln(c, -70, -196, -40, -206, 6, al(0xFFFFFFFF, 60));
+                break;
+            case 2: { // cartoon
+                rr(c, -102, -216, 204, 130, 10, 0xFFFFB3D1);
+                float b = (float) Math.abs(Math.sin(t * 5)) * 10;
+                ci(c, 0, -146 - b, 40, 0xFFFFE066);
+                ci(c, -14, -154 - b, 6, INK); ci(c, 14, -154 - b, 6, INK);
+                arc(c, 0, -142 - b, 16, 12, 20, 140, 5, INK);
+                break;
+            }
+            case 3: { // colour bars
+                int[] cols = {0xFFFFFFFF, 0xFFFFE066, 0xFF7FE0F0, 0xFF7ED957, 0xFFFF8FD0, 0xFFFF5C5C, 0xFF6C7BFF};
+                float w = 204 / 7f;
+                for (int i = 0; i < 7; i++) rect(c, -102 + i * w, -216, w + 1, 130, cols[i]);
+                break;
+            }
+            default: // landscape
+                rr(c, -102, -216, 204, 130, 10, 0xFF8FD8FF);
+                ci(c, 50, -170, 20, 0xFFFFE066);
+                poly(c, 0xFF7ED957, -102, -86, -30, -150, 20, -86);
+                poly(c, 0xFF5BBF4C, -40, -86, 30, -136, 102, -86);
                 break;
         }
     }

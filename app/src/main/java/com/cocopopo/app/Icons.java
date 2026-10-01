@@ -9,7 +9,7 @@ import static com.cocopopo.app.Gfx.*;
 final class Icons {
     static final int HOME = 0, CAMERA = 1, BROOM = 2, PEOPLE = 3, CUBE = 4, PLUS = 5, MINUS = 6, CHECK = 7, DICE = 8,
         CLOSE = 9, TRASH = 10, EDIT = 11, SMILE = 12, FLIP = 13, COPY = 14, BACK = 15, STAR = 16, SHIRT = 17,
-        FACE = 18, HAIR = 19, SPARK = 20, PERSON_PLUS = 21, SAVE = 22;
+        FACE = 18, HAIR = 19, SPARK = 20, PERSON_PLUS = 21, SAVE = 22, PLAY = 23;
 
     private static final Path p = new Path();
 
@@ -128,6 +128,9 @@ final class Icons {
                 ci(c, 22, -22, 6, col);
                 break;
             }
+            case PLAY:
+                poly(c, col, -14, -28, 30, 0, -14, 28);
+                break;
             case SAVE:
                 p.reset();
                 p.moveTo(0, 26); p.cubicTo(-40, -4, -26, -30, 0, -14); p.cubicTo(26, -30, 40, -4, 0, 26);

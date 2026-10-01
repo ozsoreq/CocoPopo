@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.media.AudioManager;
+import android.media.SoundPool;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
@@ -30,6 +32,46 @@ final class GameView extends View implements Game.Host {
         prefs = a.getSharedPreferences("cocopopo", Context.MODE_PRIVATE);
         game = new Game(this);
         setKeepScreenOn(true);
+        initSounds(a);
+    }
+
+    // ---- sounds, synthesised at start-up (no audio assets)
+    private SoundPool pool;
+    private final int[] sfx = new int[8];
+    private final long[] lastPlay = new long[8];
+
+    @SuppressWarnings("deprecation")
+    private void initSounds(Context ctx) {
+        try {
+            pool = new SoundPool(6, AudioManager.STREAM_MUSIC, 0);
+            for (int i = 0; i < sfx.length; i++) {
+                File f = new File(ctx.getCacheDir(), "sfx" + i + ".wav");
+                writeWav(f, Synth.make(i));
+                sfx[i] = pool.load(f.getAbsolutePath(), 1);
+            }
+        } catch (Exception e) {
+            pool = null;
+        }
+    }
+
+    private static void writeWav(File f, short[] pcm) throws java.io.IOException {
+        int rate = Synth.RATE, bytes = pcm.length * 2;
+        java.io.DataOutputStream o = new java.io.DataOutputStream(new java.io.BufferedOutputStream(new FileOutputStream(f)));
+        o.writeBytes("RIFF"); o.writeInt(Integer.reverseBytes(36 + bytes)); o.writeBytes("WAVEfmt ");
+        o.writeInt(Integer.reverseBytes(16)); o.writeShort(Short.reverseBytes((short) 1)); o.writeShort(Short.reverseBytes((short) 1));
+        o.writeInt(Integer.reverseBytes(rate)); o.writeInt(Integer.reverseBytes(rate * 2));
+        o.writeShort(Short.reverseBytes((short) 2)); o.writeShort(Short.reverseBytes((short) 16));
+        o.writeBytes("data"); o.writeInt(Integer.reverseBytes(bytes));
+        for (short v : pcm) o.writeShort(Short.reverseBytes(v));
+        o.close();
+    }
+
+    @Override public void sound(int id) {
+        if (pool == null || id < 0 || id >= sfx.length) return;
+        long now = System.currentTimeMillis();
+        if (now - lastPlay[id] < 60) return;
+        lastPlay[id] = now;
+        pool.play(sfx[id], .8f, .8f, 1, 0, 0.9f + (float) Math.random() * .2f);
     }
 
     @Override protected void onSizeChanged(int w, int h, int ow, int oh) {

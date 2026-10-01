@@ -3,9 +3,13 @@
 A personal Toca Life World–style dollhouse game for Android. Pick a place on the map, build your own
 characters, and play: drag people and furniture around, make them emote, take photos.
 
-| Map | Home | School |
-|---|---|---|
-| ![map](docs/g_map.png) | ![home](docs/g_scene_home.png) | ![school](docs/g_scene_school.png) |
+| Rotating world | Life in the house |
+|---|---|
+| ![map](docs/g_map.png) | ![life](docs/g_life.png) |
+
+| Home | School |
+|---|---|
+| ![home](docs/g_scene_home.png) | ![school](docs/g_scene_school.png) |
 
 | Café | Character creator |
 |---|---|
@@ -18,9 +22,17 @@ Copy it to your phone/tablet and open it (allow "install unknown apps" for your 
 
 ## How to play
 
-* **Map** – tap one of 8 places: Cozy Home (2-storey cutaway), School, Hospital, Market, Café, Park, Beach, Funfair.
-  The pink button (top-left) opens the character creator.
-* **Move things** – drag any character or item. Tap one to select it: edit (characters), emote, flip, bigger, smaller, copy, delete.
+See [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) for the full feature list.
+
+* **World** – drag to spin the planet (or use the arrows); it snaps to a place. Tap the building or ▶ to go in.
+* **Characters live** – they breathe, blink, look around, wave, dance and wander. Select one and tap the floor to make it walk there.
+* **Sit & sleep** – drop a character on a chair, sofa, bench, toilet, swing or wheelchair to sit; on a bed to sleep.
+* **Hold & eat** – drop an item on a character to hand it over; tap a character holding food to eat it bite by bite.
+* **Gravity & toss** – things fall to the floor, small items can be put on tables or flicked so they bounce. Tap a ball to kick it.
+* **Tap props** – lamp on/off, TV channels, fridge door, stove, gift box surprise.
+
+* **Places** – Cozy Home (2-storey cutaway), School, Hospital, Market, Café, Park, Beach, Funfair. The pink button (top-left) opens the character creator.
+* **Selection menu** – tapping something also shows: edit (characters), emote, flip, bigger, smaller, copy, delete.
 * **Bottom-left buttons** – people tray (your characters + 10 presets + “New”) and item tray (55+ props in 5 categories).
   Tap a card to add it, or drag it straight into the scene.
 * **Character creator** – skin, 9 hairstyles, hair colours, eyes, mouths, 6 outfits, colours and accessories. 🎲 randomises, ♥ saves to *My characters*.
@@ -48,7 +60,9 @@ stand-in for `android.graphics` (`tools/preview`). `tools/preview.sh smoke` runs
 
 ```
 app/src/main/java/com/cocopopo/app/
-  Game.java      all screens, input, tray, editor, persistence (platform independent)
+  Game.java      all screens, input, world map, life simulation, tray, editor, persistence
+  Life.java      rules: seats, beds, surfaces, floors, food, interactive props
+  Synth.java     procedural sound effects
   Avatar.java    character renderer     Look.java   appearance + presets
   PropArt.java   55+ item drawings      Scenes.java location backgrounds + map icons
   Icons.java     button glyphs          Gfx.java    drawing helpers
